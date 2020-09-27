@@ -11,7 +11,7 @@ class SimpleMLP(nn.Module):
         self.fc3 = nn.Linear(dim_inner, 1)
 
         self.activation = nn.Tanh()
-        self.dropout_rate : float = 0.5
+        self.dropout_rate : float = 0.9
 
     def forward(self, x):
         x = self.activation(self.fc1(x))

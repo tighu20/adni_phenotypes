@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
@@ -69,21 +70,22 @@ class BrainFeaturesDataset(Dataset):
         """
         :param csv_path: Location of CSV file. Column `diagnosis` assumed to have targetted label"
         """
-        self.df_adni = pd.read_csv(csv_path, index_col=0)
-        self.target = self.df_adni['diagnosis'].copy()
-        # Ensuring this order in all dataframes for correct ordering
-        self.df_adni = self.df_adni[FEATURES_CORTICAL + FEATURES_VOLUME + FEATURES_VOLUME_EXTRA]
+        df_adni = pd.read_csv(csv_path, index_col=0)
 
-        assert self.df_adni.shape[1] == len(
+        self.target = df_adni['diagnosis'].to_numpy(dtype=np.float32)
+        # Ensuring this order in all dataframes for correct ordering
+        self.X = df_adni[FEATURES_CORTICAL + FEATURES_VOLUME + FEATURES_VOLUME_EXTRA].to_numpy(dtype=np.float32)
+
+        assert self.X.shape[1] == len(
             FEATURES_CORTICAL + FEATURES_VOLUME + FEATURES_VOLUME_EXTRA), 'Something is wrong with dataframe shape!'
-        assert sorted(self.target.unique()) == [0, 1], 'Something is wrong with dataframe shape!'
+        assert sorted(np.unique(self.target)) == [0, 1], 'Something is wrong with dataframe shape!'
 
     def __len__(self):
-        return len(self.df_adni)
+        return len(self.X)
 
     def __getitem__(self, idx):
         # Convert idx from tensor to list due to pandas bug (that arises when using pytorch's random_split)
         if isinstance(idx, torch.Tensor):
             idx = idx.tolist()
 
-        return self.df_adni.iloc[idx].values, self.target[idx]
+        return self.X[idx], self.target[idx]
