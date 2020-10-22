@@ -12,12 +12,13 @@ class SimpleMLP(nn.Module):
 
         self.activation = nn.Tanh()
         self.dropout_rate : float = 0.9
+        self.dropout_layer = nn.Dropout(p=self.dropout_rate)
 
     def forward(self, x):
         x = self.activation(self.fc1(x))
-        x = F.dropout(x, p=self.dropout_rate, training=self.training)
+        x = self.dropout_layer(x)
         x = self.activation(self.fc2(x))
-        x = F.dropout(x, p=self.dropout_rate, training=self.training)
+        x = self.dropout_layer(x)
         x = self.fc3(x)
 
         return torch.sigmoid(x)

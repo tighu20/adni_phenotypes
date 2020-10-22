@@ -79,7 +79,7 @@ def train_simple_mlp():
     train_loader = DataLoader(train_dataset, batch_size=200, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=200, shuffle=False)
 
-    device = torch.device('cuda:0')
+    device = torch.device('cpu')
 
     model = SimpleMLP(dim_in=155).to(device)
 
@@ -92,6 +92,7 @@ def train_simple_mlp():
 
     ##
     # Main cycle
+    best_loss = 1000
     for e in range(1, EPOCHS + 1):
         _ = model_forward_pass(model=model, loader=train_loader, is_train=True,
                                device=device, optimiser=optimiser, criterion=criterion)
@@ -99,6 +100,10 @@ def train_simple_mlp():
                                            device=device, criterion=criterion)
         val_metrics = model_forward_pass(model=model, loader=val_loader, is_train=False,
                                            device=device, criterion=criterion)
+
+        if val_metrics['loss'] < best_loss:
+            best_loss = val_metrics['loss']
+            torch.save(model.state_dict(), 'saved_models/simple_mlp.pt')
 
         print(f'{e + 0:03}| L: {train_metrics["loss"]:.3f} / {val_metrics["loss"]:.3f}'
               f' | Acc: {train_metrics["acc"]:.2f} / {val_metrics["acc"]:.2f}'
