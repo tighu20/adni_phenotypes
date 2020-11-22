@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
 
 class SimpleMLP(nn.Module):
 
@@ -11,7 +11,7 @@ class SimpleMLP(nn.Module):
         self.fc3 = nn.Linear(dim_inner, 1)
 
         self.activation = nn.Tanh()
-        self.dropout_rate : float = 0.9
+        self.dropout_rate: float = 0.9
         self.dropout_layer = nn.Dropout(p=self.dropout_rate)
 
     def forward(self, x):

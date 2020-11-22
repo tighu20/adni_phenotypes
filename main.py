@@ -1,10 +1,13 @@
+import os
 from typing import Dict
+
 import numpy as np
 import torch
 import torch.optim as optim
+import wandb
+from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, recall_score, average_precision_score
 from torch.nn import BCELoss
 from torch.utils.data import DataLoader
-from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, recall_score, average_precision_score
 
 from datasets import BrainFeaturesDataset
 from models import SimpleMLP
@@ -30,8 +33,14 @@ def calculate_metrics(labels, pred_prob, pred_binary, loss_value) -> Dict[str, f
             'specificity': recall_score(labels, pred_binary, pos_label=0, zero_division=0)}
 
 
-def model_forward_pass(model, loader, is_train, device, criterion, optimiser=None) -> Dict[str, float]:
+def log_to_wandb(train_metrics, val_metrics):
+    train_dict = {f'train_{elem[0]}': elem[1] for elem in train_metrics.items()}
+    val_dict = {f'val_{elem[0]}': elem[1] for elem in val_metrics.items()}
 
+    wandb.log({**train_dict, **val_dict})
+
+
+def model_forward_pass(model, loader, is_train, device, criterion, optimiser=None) -> Dict[str, float]:
     if is_train:
         model.train()
     else:
@@ -72,43 +81,57 @@ def model_forward_pass(model, loader, is_train, device, criterion, optimiser=Non
     else:
         return {'loss': epoch_loss / len(loader)}
 
+
 def train_simple_mlp():
+    EPOCHS = 100
+    LEARNING_RATE = 0.001
+    WEIGHT_DECAY = 0.0001
+
+    wandb.config.lr = LEARNING_RATE
+    wandb.config.weight_decay = WEIGHT_DECAY
+
     train_dataset = BrainFeaturesDataset('data/adni_train_scaled_corrected.csv')
     val_dataset = BrainFeaturesDataset('data/adni_test_scaled_corrected.csv')
 
     train_loader = DataLoader(train_dataset, batch_size=200, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=200, shuffle=False)
 
-    device = torch.device('cpu')
+    device = torch.device('cuda')
 
     model = SimpleMLP(dim_in=155).to(device)
+    wandb.watch(model, log='all')
 
-    EPOCHS = 100
-    LEARNING_RATE = 0.001
-
-
-    optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
     criterion = BCELoss()
 
     ##
     # Main cycle
     best_loss = 1000
+    epoch_best = -1
     for e in range(1, EPOCHS + 1):
         _ = model_forward_pass(model=model, loader=train_loader, is_train=True,
                                device=device, optimiser=optimiser, criterion=criterion)
         train_metrics = model_forward_pass(model=model, loader=train_loader, is_train=False,
                                            device=device, criterion=criterion)
         val_metrics = model_forward_pass(model=model, loader=val_loader, is_train=False,
-                                           device=device, criterion=criterion)
+                                         device=device, criterion=criterion)
 
         if val_metrics['loss'] < best_loss:
             best_loss = val_metrics['loss']
+            epoch_best = e
             torch.save(model.state_dict(), 'saved_models/simple_mlp.pt')
+            torch.save(model.state_dict(), os.path.join(wandb.run.dir, 'simple_mlp.pt'))
 
+        log_to_wandb(train_metrics, val_metrics)
         print(f'{e + 0:03}| L: {train_metrics["loss"]:.3f} / {val_metrics["loss"]:.3f}'
               f' | Acc: {train_metrics["acc"]:.2f} / {val_metrics["acc"]:.2f}'
               f' | ROC: {train_metrics["roc"]:.2f} / {val_metrics["roc"]:.2f}'
               f' | P-R: {train_metrics["p-r"]:.2f} / {val_metrics["p-r"]:.2f}')
 
+    print(f'Best val loss {best_loss:.2f} at epoch {epoch_best}.')
+    wandb.log({'best_val_loss': best_loss, 'best_val_epoch': epoch_best})
+
+
 if __name__ == '__main__':
+    wandb.init(project='adni_phenotypes')
     train_simple_mlp()
