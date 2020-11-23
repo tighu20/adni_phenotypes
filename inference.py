@@ -3,6 +3,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import torch
+import wandb
 from torch.utils.data import DataLoader
 
 from datasets import BrainFeaturesDataset
@@ -40,11 +41,15 @@ def mc_passes(model, loader, n_passes: int, device: str) -> Tuple[np.ndarray, np
 
 
 def run_on_ukb():
-    device = torch.device('cpu')
+    device = torch.device('cuda')
+    run_id = 'tjiagom/adni_phenotypes/2cxy59fk'
+    api = wandb.Api()
+    best_run = api.run(run_id)
 
-    model = SimpleMLP(dim_in=155).to(device)
+    model = SimpleMLP(dim_in=155, dropout_rate=best_run.config['dropout']).to(device)
 
-    model.load_state_dict(torch.load('saved_models/simple_mlp.pt'))
+    restored_path = wandb.restore('simple_mlp.pt', run_path=run_id)
+    model.load_state_dict(torch.load(restored_path.name))
     model.eval()
 
     enable_dropout(model)
@@ -52,11 +57,11 @@ def run_on_ukb():
     ukb_dataset = BrainFeaturesDataset('data/ukb_scaled_corrected.csv', has_target=False, keep_ids=True)
     ukb_loader = DataLoader(ukb_dataset, batch_size=200, shuffle=False)
 
-    ids, means, stds = mc_passes(model, ukb_loader, 10, device)
+    ids, means, stds = mc_passes(model, ukb_loader, 50, device)
 
     ret_df = pd.DataFrame(list(zip(ids, means, stds)), columns=['ukb_id', 'mean', 'std']).set_index('ukb_id')
 
-    ret_df.to_csv('results/simple_output.csv')
+    ret_df.to_csv('results/latest_output.csv')
 
 
 if __name__ == '__main__':

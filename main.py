@@ -86,9 +86,11 @@ def train_simple_mlp():
     EPOCHS = 100
     LEARNING_RATE = 0.001
     WEIGHT_DECAY = 0.0001
+    DROPOUT_RATE = 0.8
 
     wandb.config.lr = LEARNING_RATE
     wandb.config.weight_decay = WEIGHT_DECAY
+    wandb.config.dropout = DROPOUT_RATE
 
     train_dataset = BrainFeaturesDataset('data/adni_train_scaled_corrected.csv')
     val_dataset = BrainFeaturesDataset('data/adni_test_scaled_corrected.csv')
@@ -98,8 +100,8 @@ def train_simple_mlp():
 
     device = torch.device('cuda')
 
-    model = SimpleMLP(dim_in=155).to(device)
-    wandb.watch(model, log='all')
+    model = SimpleMLP(dim_in=train_dataset.X.shape[1], dropout_rate=DROPOUT_RATE).to(device)
+    wandb.watch(model, log='all', log_freq=2) # setting to log_freq=1 significantly slows down the script
 
     optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
     criterion = BCELoss()
@@ -129,7 +131,8 @@ def train_simple_mlp():
               f' | P-R: {train_metrics["p-r"]:.2f} / {val_metrics["p-r"]:.2f}')
 
     print(f'Best val loss {best_loss:.2f} at epoch {epoch_best}.')
-    wandb.log({'best_val_loss': best_loss, 'best_val_epoch': epoch_best})
+    wandb.run.summary['best_val_loss'] = best_loss
+    wandb.run.summary['best_val_epoch'] = epoch_best
 
 
 if __name__ == '__main__':

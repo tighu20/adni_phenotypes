@@ -1,5 +1,7 @@
 # Project specific ignores
 wandb/
+# in root folder because of wandb restoring file
+simple_mlp.pt
 
 # Data is > 100 MB
 data/UKBB_freesurfer.csv
