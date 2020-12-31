@@ -41,7 +41,10 @@ def mc_passes(model, loader, n_passes: int, device: str) -> Tuple[np.ndarray, np
     return np.hstack(id_predictions), np.hstack(mean_predictions), np.hstack(std_predictions)
 
 
-def run_inference(dataset_location, dataset_id):
+def run_inference(dataset_location: str, dataset_id: str, single_pass: bool) -> None:
+    if single_pass:
+        print('Warning: Single pass activated. Not using MC Dropout!')
+
     device = torch.device('cuda')
     run_id = 'tjiagom/adni_phenotypes/2cxy59fk'
     api = wandb.Api()
@@ -53,17 +56,23 @@ def run_inference(dataset_location, dataset_id):
     model.load_state_dict(torch.load(restored_path.name))
     model.eval()
 
-    enable_dropout(model)
+    if not single_pass:
+        enable_dropout(model)
 
     dataset = BrainFeaturesDataset(dataset_location, has_target=False, keep_ids=True)
     loader = DataLoader(dataset, batch_size=200, shuffle=False)
 
-    ids, means, stds = mc_passes(model, loader, 50, device)
+    if single_pass:
+        num_samples = 1
+    else:
+        num_samples = 50
+
+    ids, means, stds = mc_passes(model, loader, num_samples, device)
 
     ret_df = pd.DataFrame(list(zip(ids, means, stds)), columns=[f'{dataset_id}_id', 'mean', 'std'])
     ret_df = ret_df.set_index(f'{dataset_id}_id')
 
-    ret_df.to_csv(f'results/latest_output_{dataset_id}.csv')
+    ret_df.to_csv(f'results/latest_output_{dataset_id}_{num_samples}.csv')
 
 def parse_args():
     parser = argparse.ArgumentParser(description='ADNI Phenotypes')
@@ -77,10 +86,15 @@ def parse_args():
                         choices=['ukb', 'nacc'],
                         help='Small identification of dataset.')
 
+    parser.add_argument('--do_single_pass',
+                        action='store_true',
+                        help='Whether to do one single pass, rather than MC-Drop.')
+
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_args()
     print(args)
 
-    run_inference(dataset_location=args.dataset_location, dataset_id=args.dataset_id)
+    run_inference(dataset_location=args.dataset_location, dataset_id=args.dataset_id,
+                  single_pass=args.do_single_pass)
