@@ -18,12 +18,12 @@ def enable_dropout(m):
             each_module.train()
 
 
-def mc_passes(model, loader, n_passes: int, device: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def mc_passes(model, loader, n_passes: int, device: str) -> Tuple[tuple, np.ndarray, np.ndarray]:
     mean_predictions = []
     std_predictions = []
     id_predictions = []
     for id_batch, X_batch, _ in loader:
-        id_batch, X_batch = id_batch.to(device), X_batch.to(device)
+        id_batch, X_batch = id_batch, X_batch.to(device)
 
         all_preds = []
         with torch.no_grad():
@@ -36,16 +36,20 @@ def mc_passes(model, loader, n_passes: int, device: str) -> Tuple[np.ndarray, np
         mean_predictions.append(mean_batch.squeeze().detach().cpu().numpy())
         std_predictions.append(std_batch.squeeze().detach().cpu().numpy())
 
-        id_predictions.append(id_batch.cpu().numpy())
+        # For those IDs that are strings rather than integers
+        if type(id_batch) != tuple:
+            id_batch = id_batch.cpu().numpy()
 
-    return np.hstack(id_predictions), np.hstack(mean_predictions), np.hstack(std_predictions)
+        id_predictions.append(id_batch)
+
+    return np.hstack(id_predictions).tolist(), np.hstack(mean_predictions), np.hstack(std_predictions)
 
 
-def run_inference(dataset_location: str, dataset_id: str, single_pass: bool) -> None:
+def run_inference(dataset_location: str, dataset_id: str, single_pass: bool, device: str) -> None:
     if single_pass:
         print('Warning: Single pass activated. Not using MC Dropout!')
 
-    device = torch.device('cuda')
+    device = torch.device(device)
     run_id = 'tjiagom/adni_phenotypes/2cxy59fk'
     api = wandb.Api()
     best_run = api.run(run_id)
@@ -78,17 +82,24 @@ def parse_args():
     parser = argparse.ArgumentParser(description='ADNI Phenotypes')
     parser.add_argument('--dataset_location',
                         type=str,
-                        choices=['data/ukb_scaled_corrected.csv', 'data/nacc_scaled_corrected.csv'],
+                        choices=['data/ukb_scaled_corrected.csv',
+                                 'data/nacc_scaled_corrected.csv',
+                                 'data/adni_test_scaled_corrected.csv'],
                         help='The location of the dataset.')
 
     parser.add_argument('--dataset_id',
                         type=str,
-                        choices=['ukb', 'nacc'],
+                        choices=['ukb', 'nacc', 'adni'],
                         help='Small identification of dataset.')
 
     parser.add_argument('--do_single_pass',
                         action='store_true',
                         help='Whether to do one single pass, rather than MC-Drop.')
+
+    parser.add_argument('--device',
+                        type=str,
+                        default='cuda:1',
+                        help='Which GPU device to use.')
 
     return parser.parse_args()
 
@@ -97,4 +108,4 @@ if __name__ == '__main__':
     print(args)
 
     run_inference(dataset_location=args.dataset_location, dataset_id=args.dataset_id,
-                  single_pass=args.do_single_pass)
+                  single_pass=args.do_single_pass, device=args.device)
