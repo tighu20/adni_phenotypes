@@ -11,6 +11,8 @@ library(stringr)
 library(ggplot2)
 library(DT)
 library(brms)
+
+set.seed(5)
 ```
 
 
@@ -95,7 +97,24 @@ print(p_mmse)
 ```
 
 ```{r}
-anova_mmse <- brm(nacmmse ~ mean * diagnosis,
+# z-score mmse
+mmse_mean = mean(naccmmse$nacmmse, na.rm = TRUE)
+mmse_sd = sd(naccmmse$nacmmse, na.rm = TRUE)
+
+naccmmse <- naccmmse %>%
+  mutate(nacmmse = (nacmmse - mmse_mean) / mmse_sd)
+
+# z-score mean
+phenomean_mean = mean(naccmmse$mean, na.rm = TRUE)
+phenomean_sd = sd(naccmmse$mean, na.rm = TRUE)
+
+naccmmse <- naccmmse %>%
+  mutate(mean = (mean - phenomean_mean) / phenomean_sd)
+
+# set priors
+mmse_prior = set_prior
+
+anova_mmse <- brm(nacmmse ~ mean * diagnosis + age,
                   data = naccmmse,
                   prior = c(set_prior("cauchy(0,5)", class = "b")),
                   family = "skew_normal")
@@ -104,7 +123,11 @@ summary(anova_mmse)
 ```
 
 ```{r}
-plot(anova_mmse)
+posterior <- as.array(anova_mmse)
+posterior_plot <- mcmc_areas(posterior,
+                  pars = get_variables(anova_mmse)[grepl("b_mean:", get_variables(anova_mmse))])
+print(posterior_plot)
+
 ```
 
 
@@ -127,6 +150,144 @@ datatable(naccmoca_summary)
 
 ```{r}
 p_mmse <- ggplot(naccmoca, aes(x = mean, y = naccmoca, group = diagnosis, colour = diagnosis))
+p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm)
+print(p_mmse)
+```
+
+# Digit span forward
+
+```{r}
+digif <- results %>%
+  filter(!is.na(digif))
+
+digif_summary <- digif %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = round(mean(age, na.rm = TRUE), digits = 1),
+            sex = paste(length(gender[gender == "Female"]),
+                        length(gender[gender == "Male"]),
+                        sep = "/"))
+
+datatable(digif_summary)
+```
+
+```{r}
+p_mmse <- ggplot(digif, aes(x = mean, y = digif, group = diagnosis, colour = diagnosis))
+p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm)
+print(p_mmse)
+```
+
+# Digit span backwards 
+
+```{r}
+digib <- results %>%
+  filter(!is.na(digib))
+
+digib_summary <- digib %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = round(mean(age, na.rm = TRUE), digits = 1),
+            sex = paste(length(gender[gender == "Female"]),
+                        length(gender[gender == "Male"]),
+                        sep = "/"))
+
+datatable(digib_summary)
+```
+
+```{r}
+p_mmse <- ggplot(digib, aes(x = mean, y = digib, group = diagnosis, colour = diagnosis))
+p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm)
+print(p_mmse)
+```
+
+# Animal fluency
+
+```{r}
+animals <- results %>%
+  filter(!is.na(animals))
+
+animals_summary <- animals %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = round(mean(age, na.rm = TRUE), digits = 1),
+            sex = paste(length(gender[gender == "Female"]),
+                        length(gender[gender == "Male"]),
+                        sep = "/"))
+
+datatable(animals_summary)
+```
+
+```{r}
+p_mmse <- ggplot(animals, aes(x = mean, y = animals, group = diagnosis, colour = diagnosis))
+p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm)
+print(p_mmse)
+```
+
+# Trails B
+
+```{r}
+trialsb <- results %>%
+  filter(!is.na(trialsb))
+
+trialsb_summary <- trialsb %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = round(mean(age, na.rm = TRUE), digits = 1),
+            sex = paste(length(gender[gender == "Female"]),
+                        length(gender[gender == "Male"]),
+                        sep = "/"))
+
+datatable(trialsb_summary)
+```
+
+```{r}
+p_mmse <- ggplot(trialsb, aes(x = mean, y = trialsb, group = diagnosis, colour = diagnosis))
+p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm)
+print(p_mmse)
+```
+
+# WAIS
+
+```{r}
+wais <- results %>%
+  filter(!is.na(wais))
+
+wais_summary <- wais %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = round(mean(age, na.rm = TRUE), digits = 1),
+            sex = paste(length(gender[gender == "Female"]),
+                        length(gender[gender == "Male"]),
+                        sep = "/"))
+
+datatable(wais_summary)
+```
+
+```{r}
+p_mmse <- ggplot(wais, aes(x = mean, y = wais, group = diagnosis, colour = diagnosis))
+p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm)
+print(p_mmse)
+```
+
+# Boston naming task
+
+```{r}
+boston <- results %>%
+  filter(!is.na(boston))
+
+boston_summary <- boston %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = round(mean(age, na.rm = TRUE), digits = 1),
+            sex = paste(length(gender[gender == "Female"]),
+                        length(gender[gender == "Male"]),
+                        sep = "/"))
+
+datatable(boston_summary)
+```
+
+```{r}
+p_mmse <- ggplot(boston, aes(x = mean, y = boston, group = diagnosis, colour = diagnosis))
 p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm)
 print(p_mmse)
 ```
