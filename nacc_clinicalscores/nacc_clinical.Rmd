@@ -13,18 +13,31 @@ library(DT)
 library(brms)
 library(bayesplot)
 library(tidybayes)
+library(xtable)
+library(janitor)
 
 options(mc.cores = parallel::detectCores())
 set.seed(5)
 ```
 
-
 ```{r}
-# import clinical scores
+# import diagnoses
 clinical_data_file = "../data/nacc_collatedResults.csv"
-
 clindata = read.table(clinical_data_file, header = TRUE)
 
+clindata_summary <- clindata %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj)) %>%
+  adorn_totals("row")
+
+datatable(clindata_summary)
+
+clindata_summary_xtable <- xtable(clindata_summary)
+print(clindata_summary_xtable)
+```
+
+
+```{r}
 # remove volume and thickness measures
 clindata <- clindata %>%
   select(colnames(.)[!grepl("volume", colnames(.))]) %>%

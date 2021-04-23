@@ -1,0 +1,32 @@
+---
+title: "ADNI clinical data"
+output: html_notebook
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(DT)
+library(xtable)
+```
+
+```{r}
+adnidata <- read.table("../data/adni_test_corrected.csv", header = TRUE, sep = ",")
+adnidata <- rbind(adnidata,
+                  read.table("../data/adni_train_corrected.csv", header = TRUE, sep = ","))
+
+
+# Summarise
+adnidata_summary <- adnidata %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = round(mean(age, na.rm = TRUE), digits = 1),
+            gender = paste(length(gender[gender=="Male"]),
+                           length(gender[gender=="Female"]),
+                           sep = "/"))
+  
+datatable(adnidata_summary)
+
+adnidata_summary_xtable <- xtable(adnidata_summary)
+print(adnidata_summary_xtable)
+```
