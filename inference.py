@@ -84,12 +84,13 @@ def parse_args():
                         type=str,
                         choices=['data/ukb_scaled_corrected.csv',
                                  'data/nacc_scaled_corrected.csv',
-                                 'data/adni_test_scaled_corrected.csv'],
+                                 'data/adni_test_scaled_corrected.csv',
+                                 'data/adni_train_scaled_corrected.csv'],
                         help='The location of the dataset.')
 
     parser.add_argument('--dataset_id',
                         type=str,
-                        choices=['ukb', 'nacc', 'adni'],
+                        choices=['ukb', 'nacc', 'adni', 'adni_train'],
                         help='Small identification of dataset.')
 
     parser.add_argument('--do_single_pass',
