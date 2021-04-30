@@ -1,0 +1,509 @@
+---
+title: "UKBB clinical scores"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+library(RSQLite)
+library(ggplot2)
+```
+
+In this notebook we'll examine the correlation between the neuroimaging derived phenotype scores and clinical scores in the UK biobank population.
+
+```{r}
+# create sqlite connection
+ukbb.db <- DBI::dbConnect(SQLite(),
+                          "/home/tr332/rds/hpc-work/biobank/data/ukb40183.db")
+
+```
+
+```{r}
+# define clinical score
+threshold = 0.5
+
+getdata <- function(clinscore, threshold){
+  # pairs matching
+  alldata <- dbGetQuery(ukbb.db,
+                        sql(paste("SELECT clinicaldata.eid,", paste("clinicaldata", clinscore, sep = "."), " AS clinscore,",
+                                  "ukbb_t1_phenotype.mean",
+                                  "FROM clinicaldata",
+                                  "JOIN ukbb_t1_phenotype ON clinicaldata.eid = ukbb_t1_phenotype.eid",
+                                  "WHERE clinicaldata.t1_structural IS NOT ''",
+                                  "AND", paste("clinicaldata", clinscore, sep = "."), "IS NOT ''")))
+
+  alldata$adlike <- as.factor(sapply(alldata$mean,
+                                     function(x, thr) if(x >= thr) { return("Positive") } else { return("Negative") },
+                                     thr = threshold))
+
+  alldata$clinscore <- as.numeric(alldata$clinscore)
+  return(alldata)
+}
+
+```
+
+# Cognitive tests
+
+## Tower rearranging
+
+```{r}
+clinscore = "towerrearranging_n_correct"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+
+```
+
+## Pairs matching
+
+### n correct
+```{r}
+clinscore = "pairsmatching_n_correct"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+
+```
+
+### n incorrect
+```{r}
+clinscore = "pairsmatching_n_incorrect"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+
+```
+
+### time to complete
+```{r}
+clinscore = "pairsmatching_time_to_complete"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Reaction time
+
+### Duration to snap button pressed
+```{r}
+clinscore = "reactiontime_duration_to_snapbutton_pressed"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+### Mean time correct
+```{r}
+clinscore = "reactiontime_mean_time_correct"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Numeric memory
+```{r}
+clinscore = "nummemory_max_remembered"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Prospective memory
+
+# Time to answer
+```{r}
+clinscore = "prospectivememory_time_to_answer"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Fluid intelligence
+```{r}
+clinscore = "FI_total"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Matrix pattern completion
+```{r}
+clinscore = "mpc_n_solved"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Trail making
+### Path 2 errors
+```{r}
+clinscore = "trails_path_2_errors"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+### Path 2 duration
+```{r}
+clinscore = "trails_path_2_duration"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Tower rearranging - n correct
+```{r}
+clinscore = "towerrearranging_n_correct"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+# Other health indicators
+
+## hand grip
+
+### left
+```{r}
+clinscore = "hand_grip_left"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+### right
+```{r}
+clinscore = "hand_grip_right"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## waist circumference
+```{r}
+clinscore = "waist_circumference"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## hip circumference
+```{r}
+clinscore = "hip_circumference"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## BP
+### systolic - manual
+```{r}
+clinscore = "BP_systolic_manual"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+### diastolic - manual
+```{r}
+clinscore = "BP_diastolic_manual"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+### systolic - automated
+```{r}
+clinscore = "BP_systolic_automated"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+### diastolic - automated
+```{r}
+clinscore = "BP_diastolic_automated"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Sleep duration
+```{r}
+clinscore = "sleep_duration"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Alcohol frequency
+```{r}
+clinscore = "Alcohol_frequency"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Seen GP for depression
+```{r}
+clinscore = "seen_gp_depression"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Seen psychiatry for depression
+```{r}
+clinscore = "seen_psych_depression"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Overall health rating
+```{r}
+clinscore = "overall_health_rating"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Hearing difficulties
+```{r}
+clinscore = "hearing_difficulties"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Neuroticism score
+```{r}
+clinscore = "neuroticism_score"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
