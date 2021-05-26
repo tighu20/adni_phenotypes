@@ -7,6 +7,19 @@ output: html_notebook
 library(dplyr)
 library(RSQLite)
 library(ggplot2)
+library(broom.mixed)
+library(tidyr)
+library(brms)
+library(bayesplot)
+library(rstan)
+library(multcomp)
+library(coda)
+library(tidybayes)
+
+# options for rstan
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
 ```
 
 In this notebook we'll examine the correlation between the neuroimaging derived phenotype scores and clinical scores in the UK biobank population.
@@ -14,7 +27,7 @@ In this notebook we'll examine the correlation between the neuroimaging derived 
 ```{r}
 # create sqlite connection
 ukbb.db <- DBI::dbConnect(SQLite(),
-                          "/home/tr332/rds/hpc-work/biobank/data/ukb40183.db")
+                          "../data/ukb40183.db")
 
 ```
 
@@ -25,11 +38,15 @@ threshold = 0.5
 getdata <- function(clinscore, threshold){
   # pairs matching
   alldata <- dbGetQuery(ukbb.db,
-                        sql(paste("SELECT clinicaldata.eid,", paste("clinicaldata", clinscore, sep = "."), " AS clinscore,",
+                        sql(paste("SELECT clinicaldata.eid, demogs.age, demogs.visit,",
+                                  paste("clinicaldata", clinscore, sep = "."), " AS clinscore,",
                                   "ukbb_t1_phenotype.mean",
                                   "FROM clinicaldata",
-                                  "JOIN ukbb_t1_phenotype ON clinicaldata.eid = ukbb_t1_phenotype.eid",
+                                  "JOIN ukbb_t1_phenotype, demogs ON clinicaldata.eid = ukbb_t1_phenotype.eid",
+                                  "AND clinicaldata.eid = demogs.eid",
+                                  "AND ukbb_t1_phenotype.eid = demogs.eid",
                                   "WHERE clinicaldata.t1_structural IS NOT ''",
+                                  "AND demogs.age IS NOT ''",
                                   "AND", paste("clinicaldata", clinscore, sep = "."), "IS NOT ''")))
 
   alldata$adlike <- as.factor(sapply(alldata$mean,
@@ -37,6 +54,7 @@ getdata <- function(clinscore, threshold){
                                      thr = threshold))
 
   alldata$clinscore <- as.numeric(alldata$clinscore)
+  alldata$age <- as.numeric(alldata$age)
   return(alldata)
 }
 
@@ -59,6 +77,37 @@ p <- ggplot(alldata,
 p <- p + geom_boxplot()
 
 print(p)
+
+```
+```{r}
+# Bayesian analysis
+priors<-c(prior(normal(50,50),class="Intercept"),
+                      prior(normal(50,50),class="b"),
+                      prior(cauchy(0,10),class="sigma"))
+age_brms<-brm(clinscore ~ adlike + age,
+              data=alldata,
+              iter=5000,warmup=1000,chains=4,
+              prior=priors)
+summary(age_brms)
+
+```
+
+```{r}
+summary_model <- summary(age_brms)
+
+age_brms %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept=mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = summary_model$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = summary_model$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
 
 ```
 

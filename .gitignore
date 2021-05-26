@@ -7,6 +7,7 @@ simple_mlp.pt
 data/UKBB_freesurfer.csv
 data/ukb_scaled_corrected.csv
 data/ukb_phenotypes.csv
+*.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
