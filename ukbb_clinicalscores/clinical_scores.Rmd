@@ -38,7 +38,8 @@ threshold = 0.5
 getdata <- function(clinscore, threshold){
   # pairs matching
   alldata <- dbGetQuery(ukbb.db,
-                        sql(paste("SELECT clinicaldata.eid, demogs.age, demogs.visit,",
+                        sql(paste("SELECT clinicaldata.eid, clinicaldata.noncancer_code_selfreported,",
+                                  "demogs.age, demogs.visit,",
                                   paste("clinicaldata", clinscore, sep = "."), " AS clinscore,",
                                   "ukbb_t1_phenotype.mean",
                                   "FROM clinicaldata",
@@ -49,10 +50,14 @@ getdata <- function(clinscore, threshold){
                                   "AND demogs.age IS NOT ''",
                                   "AND", paste("clinicaldata", clinscore, sep = "."), "IS NOT ''")))
 
-  alldata$adlike <- as.factor(sapply(alldata$mean,
-                                     function(x, thr) if(x >= thr) { return("Positive") } else { return("Negative") },
-                                     thr = threshold))
-
+  alldata$adlike <- sapply(alldata$mean,
+                           function(x, thr) if (x >=  thr) { return("Positive") } else {return("Negative")},
+                           thr = threshold)
+  
+  alldata <- alldata %>%
+    mutate(adlike = ifelse(noncancer_code_selfreported == "1263", "AD", adlike))
+  
+  alldata$adlike <- as.factor(alldata$adlike)
   alldata$clinscore <- as.numeric(alldata$clinscore)
   alldata$age <- as.numeric(alldata$age)
   return(alldata)
@@ -66,6 +71,7 @@ getdata <- function(clinscore, threshold){
 
 ```{r}
 clinscore = "towerrearranging_n_correct"
+clinscore_name = "Tower rearranging, n correct"
 
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
@@ -81,25 +87,27 @@ print(p)
 ```
 ```{r}
 # Bayesian analysis
-priors<-c(prior(normal(50,50),class="Intercept"),
-                      prior(normal(50,50),class="b"),
-                      prior(cauchy(0,10),class="sigma"))
-age_brms<-brm(clinscore ~ adlike + age,
-              data=alldata,
-              iter=5000,warmup=1000,chains=4,
-              prior=priors)
-summary(age_brms)
+priors <- c(prior(normal(50, 50), class = "Intercept"), 
+            prior(normal(50, 50), class = "b"), 
+            prior(cauchy(0, 10), class = "sigma"))
+
+cog_brms <- brm(clinscore ~ adlike + age, 
+                data = alldata, 
+                iter = 5000, warmup = 1000, chains = 4, 
+                prior = priors)
+
+summary(cog_brms)
 
 ```
 
 ```{r}
-summary_model <- summary(age_brms)
+summary_model <- summary(cog_brms)
 
-age_brms %>%
+cog_brms %>%
   spread_draws(b_adlikePositive) %>%
   ggplot(aes(x = b_adlikePositive)) +
   geom_density() +
-  geom_vline(aes(xintercept=mean(b_adlikePositive)),
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
              colour = "blue",
              linetype = "dashed") +
   geom_vline(xintercept = summary_model$fixed[2,3],
@@ -109,6 +117,28 @@ age_brms %>%
              colour = "blue",
              linetype = "dashed")
 
+```
+```{r}
+cog_brms_draws <- cog_brms %>%
+  spread_draws(b_adlikePositive, b_Intercept)
+
+mean_intercept = mean(cog_brms_draws$b_Intercept)
+sd_control = sd(cog_brms_draws$b_Intercept) * 0.1
+
+cog_brms_draws %>%
+  dplyr::select(b_adlikePositive, b_Intercept) %>%
+  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
+  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+  group_by(name) %>%
+  median_qi(.width = c(.8, .95)) %>%
+  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_pointinterval() +
+  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank())
 ```
 
 ## Pairs matching
