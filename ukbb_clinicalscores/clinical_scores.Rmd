@@ -60,6 +60,12 @@ getdata <- function(clinscore, threshold){
   alldata$adlike <- as.factor(alldata$adlike)
   alldata$clinscore <- as.numeric(alldata$clinscore)
   alldata$age <- as.numeric(alldata$age)
+  
+  # normalise age
+  mean_age <- mean(alldata$age)
+  sd_age <- sd(alldata$age)
+  alldata$age <- (alldata$age - mean_age) / sd_age
+  
   return(alldata)
 }
 
@@ -123,7 +129,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 0.1
+sd_control = sd(cog_brms_draws$b_Intercept) * 1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -132,6 +138,10 @@ cog_brms_draws %>%
   group_by(name) %>%
   median_qi(.width = c(.8, .95)) %>%
   ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = mean_intercept - sd_control,
+            xmax = mean_intercept + sd_control,
+            ymin = 0, ymax = 3,
+            fill = "cornsilk3") +
   geom_pointinterval() +
   geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
   geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
