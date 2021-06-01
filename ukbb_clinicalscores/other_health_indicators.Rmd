@@ -1,0 +1,249 @@
+---
+title: "Other health indicators"
+output: html_notebook
+---
+
+# Other health indicators
+
+## hand grip
+
+### left
+```{r}
+clinscore = "hand_grip_left"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+### right
+```{r}
+clinscore = "hand_grip_right"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## waist circumference
+```{r}
+clinscore = "waist_circumference"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## hip circumference
+```{r}
+clinscore = "hip_circumference"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## BP
+### systolic - manual
+```{r}
+clinscore = "BP_systolic_manual"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+### diastolic - manual
+```{r}
+clinscore = "BP_diastolic_manual"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+### systolic - automated
+```{r}
+clinscore = "BP_systolic_automated"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+### diastolic - automated
+```{r}
+clinscore = "BP_diastolic_automated"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Sleep duration
+```{r}
+clinscore = "sleep_duration"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Alcohol frequency
+```{r}
+clinscore = "Alcohol_frequency"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Seen GP for depression
+```{r}
+clinscore = "seen_gp_depression"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Seen psychiatry for depression
+```{r}
+clinscore = "seen_psych_depression"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Overall health rating
+```{r}
+clinscore = "overall_health_rating"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Hearing difficulties
+```{r}
+clinscore = "hearing_difficulties"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
+
+## Neuroticism score
+```{r}
+clinscore = "neuroticism_score"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold)
+
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike))
+p <- p + geom_boxplot()
+
+print(p)
+```
