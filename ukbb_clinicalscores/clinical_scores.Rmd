@@ -19,7 +19,6 @@ library(tidybayes)
 # options for rstan
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
-
 ```
 
 In this notebook we'll examine the correlation between the neuroimaging derived phenotype scores and clinical scores in the UK biobank population.
@@ -28,7 +27,6 @@ In this notebook we'll examine the correlation between the neuroimaging derived 
 # create sqlite connection
 ukbb.db <- DBI::dbConnect(SQLite(),
                           "../data/ukb40183.db")
-
 ```
 
 ```{r}
@@ -45,6 +43,7 @@ getdata <- function(clinscore, threshold){
                                   "FROM clinicaldata",
                                   "JOIN ukbb_t1_phenotype, demogs ON clinicaldata.eid = ukbb_t1_phenotype.eid",
                                   "AND clinicaldata.eid = demogs.eid",
+                                  "AND clinicaldata.visit = demogs.visit",
                                   "AND ukbb_t1_phenotype.eid = demogs.eid",
                                   "WHERE clinicaldata.t1_structural IS NOT ''",
                                   "AND demogs.age IS NOT ''",
@@ -82,11 +81,22 @@ clinscore_name = "Tower rearranging, n correct"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 
@@ -126,7 +136,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -150,7 +160,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ## Pairs matching
@@ -163,11 +175,22 @@ clinscore_name = "Pairs matching, n correct"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 
@@ -207,7 +230,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -231,7 +254,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ### n incorrect
@@ -241,12 +266,23 @@ clinscore_name = "Pairs matching, n incorrect"
 
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 
@@ -286,7 +322,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -310,7 +346,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ### time to complete
@@ -320,12 +358,23 @@ clinscore_name = "Pairs matching, time to completion"
 
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 ```
@@ -364,7 +413,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -388,7 +437,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ## Reaction time
@@ -400,12 +451,23 @@ clinscore_name = "Reaction time, duration to button press"
 
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 ```
@@ -444,7 +506,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -468,7 +530,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ### Mean time correct
@@ -478,12 +542,23 @@ clinscore_name = "Reaction time, mean time of correct trials"
 
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 ```
@@ -522,7 +597,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -546,7 +621,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ## Numeric memory
@@ -556,12 +633,23 @@ clinscore_name = "Number memory"
 
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 ```
@@ -600,7 +688,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -624,7 +712,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ## Prospective memory
@@ -637,11 +727,22 @@ clinscore_name = "Prospective memory"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 ```
@@ -680,7 +781,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -704,7 +805,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ## Fluid intelligence
@@ -715,11 +818,22 @@ clinscore_name = "Fluid intelligence"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 ```
@@ -758,7 +872,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -782,7 +896,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ## Matrix pattern completion
@@ -793,11 +909,22 @@ clinscore_name = "Matrix pattern completion, n solved"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 ```
@@ -836,7 +963,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -860,7 +987,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ## Trail making
@@ -872,11 +1001,22 @@ clinscore_name = "Trails B errors"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 ```
@@ -915,7 +1055,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -939,7 +1079,9 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ### Path 2 duration
@@ -950,11 +1092,22 @@ clinscore_name = "Trails B duration"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
+alldata %>%
+  group_by(adlike) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
-                fill = adlike))
-p <- p + geom_boxplot()
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
 
 print(p)
 ```
@@ -993,7 +1146,7 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
@@ -1017,5 +1170,7 @@ cog_brms_draws %>%
   geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
   scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
   labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
