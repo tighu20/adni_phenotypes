@@ -44,7 +44,7 @@ getdata <- function(clinscore, threshold){
                                   "JOIN ukbb_t1_phenotype, demogs ON clinicaldata.eid = ukbb_t1_phenotype.eid",
                                   "AND clinicaldata.eid = demogs.eid",
                                   "AND clinicaldata.visit = demogs.visit",
-                                  "AND ukbb_t1_phenotype.eid = demogs.eid",
+                                  "AND demogs.eid = ukbb_t1_phenotype.eid",
                                   "WHERE clinicaldata.t1_structural IS NOT ''",
                                   "AND demogs.age IS NOT ''",
                                   "AND", paste("clinicaldata", clinscore, sep = "."), "IS NOT ''")))
@@ -54,7 +54,8 @@ getdata <- function(clinscore, threshold){
                            thr = threshold)
   
   alldata <- alldata %>%
-    mutate(adlike = ifelse(noncancer_code_selfreported == "1263", "AD", adlike))
+    mutate(adlike = ifelse(noncancer_code_selfreported == "1263", "AD", adlike)) %>%
+    filter(adlike != "AD") # filter out those with AD at recruitment
   
   alldata$adlike <- as.factor(alldata$adlike)
   alldata$clinscore <- as.numeric(alldata$clinscore)
@@ -719,13 +720,14 @@ cog_brms_draws %>%
 
 ## Prospective memory
 
-# Time to answer
+# result
 ```{r}
-clinscore = "prospectivememory_time_to_answer"
+clinscore = "prospectivememory_result"
 clinscore_name = "Prospective memory"
 
 alldata <- getdata(clinscore = clinscore,
-                   threshold = threshold)
+                   threshold = threshold) %>%
+  filter(clinscore != 0)
 
 alldata %>%
   group_by(adlike) %>%
@@ -749,14 +751,10 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
-            prior(cauchy(0, 10), class = "sigma"))
-
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
-                iter = 5000, warmup = 1000, chains = 4, 
-                prior = priors)
+                family = binomial(link = "logit"),
+                iter = 5000, warmup = 1000, chains = 4)
 
 summary(cog_brms)
 
