@@ -105,8 +105,8 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(3, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
@@ -176,31 +176,62 @@ clinscore_name = "Pairs matching, n correct"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
+  alldata <- dbGetQuery(ukbb.db,
+                        sql(paste("SELECT clinicaldata.eid, clinicaldata.noncancer_code_selfreported,",
+                                  "demogs.age, demogs.visit,",
+                                  paste("clinicaldata", clinscore, sep = "."), " AS clinscore,",
+                                  "ukbb_t1_phenotype.mean",
+                                  "FROM clinicaldata",
+                                  "JOIN ukbb_t1_phenotype, demogs ON clinicaldata.eid = ukbb_t1_phenotype.eid",
+                                  "AND clinicaldata.eid = demogs.eid",
+                                  "AND clinicaldata.visit = demogs.visit",
+                                  "AND demogs.eid = ukbb_t1_phenotype.eid",
+                                  "WHERE clinicaldata.t1_structural IS NOT ''",
+                                  "AND demogs.age IS NOT ''",
+                                  "AND", paste("clinicaldata", clinscore, sep = "."), "IS NOT ''")))
+
+  alldata$adlike <- sapply(alldata$mean,
+                           function(x, thr) if (x >=  thr) { return("Positive") } else {return("Negative")},
+                           thr = threshold)
+  
+  alldata <- alldata %>%
+    mutate(adlike = ifelse(noncancer_code_selfreported == "1263", "AD", adlike)) %>%
+    filter(adlike != "AD") # filter out those with AD at recruitment
+  
+  alldata$adlike <- as.factor(alldata$adlike)
+  alldata$clinscore <- as.numeric(alldata$clinscore)
+  alldata$age <- as.numeric(alldata$age)
+  
+  # normalise age
+  mean_age <- mean(alldata$age)
+  sd_age <- sd(alldata$age)
+  alldata$age <- (alldata$age - mean_age) / sd_age
+  
 alldata %>%
   group_by(adlike) %>%
   summarise(n = length(eid))
 ```
 
 ```{r}
-p <- ggplot(alldata,
-            aes(y = clinscore,
-                x = adlike,
-                fill = adlike)) +
-  geom_boxplot() +
-  labs(y = clinscore_name) +
-  theme(axis.title.x = element_blank(),
-        legend.position = "None",
-        axis.text = element_text(size = 20),
+alldata %>%
+  group_by(clinscore, adlike) %>%
+  summarise(percent = length(eid)) %>%
+  summarise(percent = percent/sum(percent)) %>%
+  ggplot(aes(x = clinscore,
+             y = count,
+             fill = adlike)) +
+  geom_bar(stat = "identity") +
+  labs(x = clinscore_name) +
+  theme(axis.text = element_text(size = 20),
         axis.title = element_text(size = 20))
 
-print(p)
-
+```
 ```
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(0, 10), class = "Intercept"),
+            prior(cauchy(0, 10), class = "b"),
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
@@ -291,8 +322,8 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
@@ -382,8 +413,8 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
@@ -475,8 +506,8 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
@@ -566,8 +597,8 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
@@ -657,8 +688,8 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
@@ -838,8 +869,8 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
@@ -929,8 +960,8 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
@@ -1021,8 +1052,8 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
@@ -1112,8 +1143,8 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(normal(50, 50), class = "Intercept"), 
-            prior(normal(50, 50), class = "b"), 
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
 cog_brms <- brm(clinscore ~ adlike + age, 
