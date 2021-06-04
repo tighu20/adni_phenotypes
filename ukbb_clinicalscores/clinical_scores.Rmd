@@ -215,8 +215,7 @@ alldata %>%
 ```{r}
 alldata %>%
   group_by(clinscore, adlike) %>%
-  summarise(percent = length(eid)) %>%
-  summarise(percent = percent/sum(percent)) %>%
+  summarise(percent = length(eid)) #%>%
   ggplot(aes(x = clinscore,
              y = count,
              fill = adlike)) +

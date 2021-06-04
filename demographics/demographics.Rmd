@@ -75,11 +75,16 @@ ukbb.db <- DBI::dbConnect(SQLite(),
                           "../data/ukb40183.db")
 
 ukbb_data <- dbGetQuery(ukbb.db,
-                        sql(paste("SELECT demogs.age, baseline.sex, clinicaldata.eid",
-                                  "FROM clinicaldata",
-                                  "JOIN demogs, baseline ON clinicaldata.eid = demogs.eid AND clinicaldata.visit = demogs.visit",
-                                  "AND clinicaldata.eid = baseline.eid",
-                                  "WHERE clinicaldata.t1_structural IS NOT ''")))
+                        sql(paste("SELECT demogs.age, baseline.sex, baseline.eid, clinicaldata.visit",
+                                  "FROM baseline",
+                                  "JOIN demogs, clinicaldata",
+                                  "ON baseline.eid = demogs.eid",
+                                  "AND baseline.eid = clinicaldata.eid",
+                                  "AND clinicaldata.eid = demogs.eid",
+                                  "AND clinicaldata.visit = demogs.visit",
+                                  #"WHERE clinicaldata.visit = '2'",
+                                  "WHERE baseline.imaging = 1"))) %>%
+  filter(visit == '2')
 
 
 ukbb_data_summary <- ukbb_data %>%
