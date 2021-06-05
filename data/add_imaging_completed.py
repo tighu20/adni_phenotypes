@@ -27,8 +27,8 @@ SUBJ_LIST = [BRIDGE_DICT[subj] for subj in SUBJ_LIST_IMG]
 
 # add variable to baseline table
 # add column
-# CUR.execute("ALTER TABLE baseline ADD COLUMN imaging DEFAULT 0")
-# CONNECTION.commit()
+CUR.execute("ALTER TABLE baseline ADD COLUMN imaging DEFAULT 0")
+CONNECTION.commit()
 
 for SUBJ in SUBJ_LIST:
     CUR.execute(' '.join(["UPDATE baseline SET imaging = 1",
