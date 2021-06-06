@@ -14,10 +14,27 @@ library(RSQLite)
 ADNI demographics
 
 ```{r}
-adnidata <- read.table("../data/adni_test_corrected.csv", header = TRUE, sep = ",")
-adnidata <- rbind(adnidata,
-                  read.table("../data/adni_train_corrected.csv", header = TRUE, sep = ","))
+# Summarise
+adnidata_summary <- adnidata %>%
+  group_by(DX_bl) %>%
+  summarise(n = length(subj),
+            age = round(mean(AGE, na.rm = TRUE), digits = 1),
+            gender = paste(length(PTGENDER[PTGENDER=="Male"]),
+                           length(PTGENDER[PTGENDER=="Female"]),
+                           sep = "/"),
+            mmse = round(mean(MMSE, na.rm = TRUE), digits =1),
+            moca = round(mean(MOCA, na.rm = TRUE), digits =1))
+  
+datatable(adnidata_summary)
 
+adnidata_summary_xtable <- xtable(adnidata_summary)
+print(adnidata_summary_xtable)
+```
+
+ADNI training dataset only
+
+```{r}
+adnidata <- read.table("../data/adni_train_corrected.csv", header = TRUE, sep = ",")
 
 # Summarise
 adnidata_summary <- adnidata %>%
@@ -38,6 +55,32 @@ print(adnidata_summary_xtable,
 rm(list = c("adnidata",
             "adnidata_summary",
             "adnidata_summary_xtable"))
+```
+
+ADNI test dataset only
+```{r}
+adnidata <- read.table("../data/adni_test_corrected.csv", header = TRUE, sep = ",")
+
+# Summarise
+adnidata_summary <- adnidata %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = paste(round(mean(age, na.rm = TRUE), digits = 1),
+                        paste("(", round(sd(age, na.rm = TRUE), digits = 1), ")", sep = "")),
+            sex = paste(length(gender[gender=="Male"]),
+                           length(gender[gender=="Female"]),
+                           sep = "/"))
+  
+#datatable(adnidata_summary)
+
+adnidata_summary_xtable <- xtable(adnidata_summary)
+print(adnidata_summary_xtable,
+      include.rownames = FALSE)
+
+rm(list = c("adnidata",
+            "adnidata_summary",
+            "adnidata_summary_xtable"))
+
 ```
 
 NACC demographics
