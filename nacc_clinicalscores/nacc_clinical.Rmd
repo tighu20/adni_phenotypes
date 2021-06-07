@@ -40,8 +40,8 @@ print(clindata_summary_xtable)
 ```{r}
 # remove volume and thickness measures
 clindata <- clindata %>%
-  select(colnames(.)[!grepl("volume", colnames(.))]) %>%
-  select(colnames(.)[!grepl("thickness", colnames(.))])
+  dplyr::select(colnames(.)[!grepl("volume", names(.))]) %>%
+  dplyr::select(colnames(.)[!grepl("thickness", names(.))])
 
 # import results
 # the '50' is the dropout results
@@ -49,7 +49,7 @@ results_file = "../results/latest_output_nacc_50.csv"
 results = read.table(results_file, header = TRUE, sep = ",")
 results <- results %>%
   mutate(subj = paste("sub-NACC", str_pad(nacc_id, width=6, side="left", pad="0"), sep = "")) %>%
-  select(-nacc_id)
+  dplyr::select(-nacc_id)
 
 # diagnosis groups
 
