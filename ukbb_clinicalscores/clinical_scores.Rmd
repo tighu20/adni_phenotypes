@@ -105,7 +105,7 @@ print(p)
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(cauchy(3, 10), class = "Intercept"), 
+priors <- c(prior(cauchy(10, 10), class = "Intercept"), 
             prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
@@ -213,19 +213,36 @@ alldata %>%
 ```
 
 ```{r}
-alldata %>%
-  group_by(clinscore, adlike) %>%
-  summarise(percent = length(eid)) #%>%
-  ggplot(aes(x = clinscore,
-             y = count,
-             fill = adlike)) +
-  geom_bar(stat = "identity") +
-  labs(x = clinscore_name) +
-  theme(axis.text = element_text(size = 20),
+# Change to percentages
+total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
+total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
+
+alldata_summary <- alldata %>%
+  group_by(adlike, clinscore) %>%
+  summarise(n = length(eid))
+alldata_summary$totals <- sapply(alldata_summary$adlike,
+                                 function(x, total_pos, total_neg) if (x == "Positive") {return(total_pos)} else {return(total_neg)},
+                                 total_pos = total_pos,
+                                 total_neg = total_neg)
+alldata_summary <- alldata_summary %>%
+  group_by(adlike, clinscore) %>%
+  mutate(percentage = n / totals)
+
+p <- ggplot(alldata_summary,
+            aes(y = percentage,
+                x = adlike,
+                fill = clinscore)) +
+  geom_histogram(stat = "identity",
+                 position = position_dodge2()) +
+  labs(x = clinscore) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
         axis.title = element_text(size = 20))
 
+print(p)
 ```
-```
+
 
 ```{r}
 # Bayesian analysis
@@ -235,7 +252,8 @@ priors <- c(prior(cauchy(0, 10), class = "Intercept"),
 
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
-                iter = 5000, warmup = 1000, chains = 4, 
+                iter = 5000, warmup = 1000, chains = 4,
+                family = skew_normal(),
                 prior = priors)
 
 summary(cog_brms)
@@ -303,7 +321,6 @@ alldata %>%
 ```
 
 ```{r}
-
 p <- ggplot(alldata,
             aes(y = clinscore,
                 x = adlike,
