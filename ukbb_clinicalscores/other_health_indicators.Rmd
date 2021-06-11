@@ -806,7 +806,7 @@ print(p)
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = binomial())
+                family = bernouilli())
 
 summary(cog_brms)
 
@@ -1014,18 +1014,13 @@ print(p)
 ```
 
 ```{r}
-# Bayesian analysis
-priors <- c(prior(normal(2, 3), class = "Intercept"), 
-            prior(cauchy(0, 10), class = "b"), 
-            prior(cauchy(0, 10), class = "sigma"))
-
+# Bayesian analysis - ordinal regression model
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
-                iter = 5000, warmup = 1000, chains = 4, 
-                prior = priors)
+                iter = 5000, warmup = 1000, chains = 4,
+                family = sratio())
 
 summary(cog_brms)
-
 ```
 
 ```{r}
