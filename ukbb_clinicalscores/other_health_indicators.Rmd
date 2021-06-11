@@ -1014,6 +1014,10 @@ print(p)
 ```
 
 ```{r}
+# priors
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"))
+
 # Bayesian analysis - ordinal regression model
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
@@ -1033,18 +1037,19 @@ cog_brms %>%
   geom_vline(aes(xintercept = mean(b_adlikePositive)),
              colour = "blue",
              linetype = "dashed") +
-  geom_vline(xintercept = summary_model$fixed[2,3],
+  geom_vline(xintercept = summary_model$fixed[4,3],
              colour = "blue",
              linetype = "dashed") + 
-  geom_vline(xintercept = summary_model$fixed[2,4],
+  geom_vline(xintercept = summary_model$fixed[4,4],
              colour = "blue",
              linetype = "dashed")
 
 ```
 
 ```{r, fig.height=2.5, fig.width=6}
-cog_brms_draws <- cog_brms %>%
-  spread_draws(b_adlikePositive, b_Intercept)
+cog_brms_draws <- spread_draws(cog_brms, b_adlikePositive, b_Intercept[])
+# select the third intercept
+cog_brms_draws <- cog_brms_draws[seq(nrow(cog_brms_draws) / 3) * 3,]
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
 sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1

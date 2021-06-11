@@ -142,7 +142,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -199,7 +199,7 @@ alldata <- getdata(clinscore = clinscore,
     filter(adlike != "AD") # filter out those with AD at recruitment
   
   alldata$adlike <- as.factor(alldata$adlike)
-  alldata$clinscore <- as.numeric(alldata$clinscore)
+  alldata$clinscore <- as.numeric(alldata$clinscore) + 1 # add one to permit ordinal regression model
   alldata$age <- as.numeric(alldata$age)
   
   # normalise age
@@ -245,15 +245,15 @@ print(p)
 
 
 ```{r}
-# Bayesian analysis
-priors <- c(prior(cauchy(0, 10), class = "Intercept"),
-            prior(cauchy(0, 10), class = "b"),
-            prior(cauchy(0, 10), class = "sigma"))
+# priors
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"))
 
+# Bayesian analysis
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = skew_normal(),
+                family = cumulative(),
                 prior = priors)
 
 summary(cog_brms)
@@ -270,21 +270,23 @@ cog_brms %>%
   geom_vline(aes(xintercept = mean(b_adlikePositive)),
              colour = "blue",
              linetype = "dashed") +
-  geom_vline(xintercept = summary_model$fixed[2,3],
+  geom_vline(xintercept = summary_model$fixed[4,3],
              colour = "blue",
              linetype = "dashed") + 
-  geom_vline(xintercept = summary_model$fixed[2,4],
+  geom_vline(xintercept = summary_model$fixed[4,4],
              colour = "blue",
              linetype = "dashed")
 
 ```
 
 ```{r, fig.height=2.5, fig.width=6}
-cog_brms_draws <- cog_brms %>%
-  spread_draws(b_adlikePositive, b_Intercept)
+cog_brms_draws <- spread_draws(cog_brms, b_adlikePositive, b_Intercept[])
+# select the third intercept
+cog_brms_draws <- cog_brms_draws[seq(nrow(cog_brms_draws) / 3) * 3,]
+
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -375,7 +377,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -466,7 +468,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -559,7 +561,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -650,7 +652,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -741,7 +743,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -831,7 +833,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -922,7 +924,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -1013,7 +1015,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -1105,7 +1107,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -1196,7 +1198,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
