@@ -61,7 +61,7 @@ def plot_all_roc_curves(mcdrop_df: pd.DataFrame, singlpass_df: pd.DataFrame) -> 
     plt.close()
 
 
-def plot_all_pr_curves(mcdrop_df, singlpass_df):
+def plot_all_pr_curves(mcdrop_df: pd.DataFrame, singlpass_df: pd.DataFrame) -> None:
     def plot_pr_stuff(tmp_df, label, color):
         preds = tmp_df['mean']
         precision, recall, thresholds = metrics.precision_recall_curve(tmp_df['diagnosis'], preds)
@@ -87,23 +87,39 @@ def plot_all_pr_curves(mcdrop_df, singlpass_df):
     plt.close()
 
 
-def populate_arrs_for_df(df, metrics_dict, threshold=0.5):
+def populate_arrs_for_df(df: pd.DataFrame, metrics_dict: defaultdict, threshold: float = 0.5):
     probs = df['mean'].copy().values
     probs[probs < threshold] = 0
     probs[probs >= threshold] = 1
 
     tn, fp, fn, tp = metrics.confusion_matrix(df['diagnosis'].values, probs).ravel()
     specificity = tn / (tn + fp)
-    sensitivty = tp / (tp + fn)
+    sensitivity = tp / (tp + fn)
     ppv = tp / (tp + fp)
     npv = tn / (tn + fn)
 
     metrics_dict[Metric.ACC.name].append(metrics.accuracy_score(df['diagnosis'].values, probs))
-    metrics_dict[Metric.SEN.name].append(sensitivty)
+    metrics_dict[Metric.SEN.name].append(sensitivity)
     metrics_dict[Metric.SPE.name].append(specificity)
     metrics_dict[Metric.PEOPLE.name].append(df.shape[0])
     metrics_dict[Metric.PPV.name].append(ppv)
     metrics_dict[Metric.NPV.name].append(npv)
+
+
+def round_and_str(val: float) -> str:
+    return str(round(val, 2))
+
+
+def print_latex_performance(df: pd.DataFrame) -> None:
+    df_metrics = defaultdict(list)
+    populate_arrs_for_df(df, df_metrics, threshold=0.5)
+
+    print(round_and_str(df_metrics[Metric.ACC.name][0]), end=' & ')
+    print(round_and_str(metrics.roc_auc_score(df['diagnosis'].values, df['mean'].values)), end=' & ')
+
+    for met in [Metric.SEN, Metric.SPE, Metric.PPV]:
+        print(round_and_str(df_metrics[met.name][0]), end=' & ')
+    print(round_and_str(df_metrics[Metric.NPV.name][0]), end=' \\\\ ')
 
 
 def plot_across_metrics(x_vals_mc, x_vals_1, mcdrop_metrics, single_metrics, x_label):
@@ -208,11 +224,11 @@ def plot_all_comparisons(joined_df: pd.DataFrame, single_pass: pd.DataFrame,
         if val.name == Metric.PEOPLE.name:
             continue
         plt.subplots(figsize=(20, 5))
-        plt.plot(people_delta_mcdrop_metrics[Metric.PEOPLE.name], people_delta_mcdrop_metrics[val.name], #'o-',
+        plt.plot(people_delta_mcdrop_metrics[Metric.PEOPLE.name], people_delta_mcdrop_metrics[val.name],  # 'o-',
                  label='Considering delta - MC Drop')
-        plt.plot(people_delta_1_metrics[Metric.PEOPLE.name], people_delta_1_metrics[val.name], #'|-',
+        plt.plot(people_delta_1_metrics[Metric.PEOPLE.name], people_delta_1_metrics[val.name],  # '|-',
                  label='Considering delta - Single')
-        plt.plot(people_std_mcdrop_metrics[Metric.PEOPLE.name], people_std_mcdrop_metrics[val.name], #'x-',
+        plt.plot(people_std_mcdrop_metrics[Metric.PEOPLE.name], people_std_mcdrop_metrics[val.name],  # 'x-',
                  label='Considering uncertainty')
         plt.xlabel('People included')
         plt.ylabel(val.value)

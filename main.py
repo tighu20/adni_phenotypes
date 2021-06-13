@@ -136,5 +136,5 @@ def train_simple_mlp():
 
 
 if __name__ == '__main__':
-    wandb.init(project='adni_phenotypes')
+    wandb.init(project='adni_phenotypes', save_code=True)
     train_simple_mlp()
