@@ -1,5 +1,6 @@
 from collections import defaultdict
 from enum import Enum
+from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,17 +18,20 @@ class Metric(Enum):
     PEOPLE = 'People included'
 
 
-def plot_mean_std(joined_df: pd.DataFrame, diagnosis_arr: list) -> None:
+def plot_mean_std(joined_df: pd.DataFrame, diagnosis_arr: list, save_fig: Union[None, str] = None) -> None:
     plt.subplots(figsize=(10, 5))
 
     for diagnosis in diagnosis_arr:
         tmp_df = joined_df[joined_df.diagnosis == diagnosis]
 
-        plt.scatter(tmp_df['std'], tmp_df['mean'], label=diagnosis)
+        plt.scatter(tmp_df['std'], tmp_df['mean'], label=diagnosis, s=6)
 
     plt.legend()
-    plt.xlabel('Std')
+    plt.xlabel('Standard Deviation')
     plt.ylabel('Mean')
+    if save_fig is not None:
+        plt.tight_layout()
+        plt.savefig(save_fig)
     plt.show()
     plt.close()
 
@@ -122,8 +126,8 @@ def print_latex_performance(df: pd.DataFrame) -> None:
     print(round_and_str(df_metrics[Metric.NPV.name][0]), end=' \\\\ ')
 
 
-def plot_across_metrics(x_vals_mc, x_vals_1, mcdrop_metrics, single_metrics, x_label):
-    fig, axs = plt.subplots(1, 5, figsize=(20, 5))
+def plot_across_metrics(x_vals_mc, x_vals_1, mcdrop_metrics, single_metrics, x_label, save_fig=None):
+    fig, axs = plt.subplots(1, 5, figsize=(20, 5), sharey=True)
 
     for i, val in enumerate(Metric):
         if val.name == Metric.PEOPLE.name:
@@ -132,11 +136,18 @@ def plot_across_metrics(x_vals_mc, x_vals_1, mcdrop_metrics, single_metrics, x_l
         axs[i].plot(x_vals_1, single_metrics[val.name], label=f'{val.value} - Single')
 
     for ax in axs:
-        ax.set_xlabel(x_label)
-        ax.set_ylabel('Performance achieved')
+        # ax.set_xlabel(x_label)
+        # ax.set_ylabel('Performance achieved')
         ax.legend()
 
+    # Fake plot to encapsulate all others and plot common x-axis label
+    fig.add_subplot(111, frame_on=False)
+    plt.tick_params(labelcolor="none", bottom=False, left=False)
+    plt.xlabel(x_label, fontsize=15)
+
     plt.tight_layout()
+    if save_fig is not None:
+        plt.savefig(save_fig, bbox_inches='tight', pad_inches=0)
     plt.show()
 
 
@@ -147,7 +158,7 @@ def print_title(title_str: str) -> None:
 
 
 def plot_all_comparisons(joined_df: pd.DataFrame, single_pass: pd.DataFrame,
-                         threshold: float, starting_num_people: int) -> None:
+                         threshold: float, starting_num_people: int, save_plot: Union[None, str] = None) -> None:
     print_title('MC-Drop with uncertainty thresholding')
 
     people_std_mcdrop_metrics = defaultdict(list)
@@ -215,7 +226,8 @@ def plot_all_comparisons(joined_df: pd.DataFrame, single_pass: pd.DataFrame,
                         np.arange(ini_val, 0.51, 0.001),
                         delta_delta_mcdrop_metrics,
                         delta_delta_1_metrics,
-                        'Extreme deltas used to filter')
+                        'Delta',
+                        save_fig=save_plot)
 
     ###############################
     print_title('All 3 approaches together')
