@@ -15,10 +15,12 @@ library(rstan)
 library(multcomp)
 library(coda)
 library(tidybayes)
+library(gridExtra)
 
 # options for rstan
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
+set.seed(123)
 ```
 
 In this notebook we'll examine the correlation between the neuroimaging derived phenotype scores and clinical scores in the UK biobank population.
@@ -41,12 +43,15 @@ getdata <- function(clinscore, threshold){
                                   paste("clinicaldata", clinscore, sep = "."), " AS clinscore,",
                                   "ukbb_t1_phenotype.mean",
                                   "FROM clinicaldata",
-                                  "JOIN ukbb_t1_phenotype, demogs ON clinicaldata.eid = ukbb_t1_phenotype.eid",
+                                  "JOIN ukbb_t1_phenotype, demogs, baseline ON clinicaldata.eid = ukbb_t1_phenotype.eid",
                                   "AND clinicaldata.eid = demogs.eid",
                                   "AND clinicaldata.visit = demogs.visit",
-                                  "AND demogs.eid = ukbb_t1_phenotype.eid",
-                                  "WHERE clinicaldata.t1_structural IS NOT ''",
-                                  "AND demogs.age IS NOT ''",
+                                  "AND clinicaldata.eid = baseline.eid",
+                                  "AND ukbb_t1_phenotype.eid = baseline.eid",
+                                  "AND demogs.eid = baseline.eid",
+                                  "AND ukbb_t1_phenotype.eid = demogs.eid",
+                                  "WHERE demogs.age IS NOT ''",
+                                  "AND baseline.imaging = 1",
                                   "AND", paste("clinicaldata", clinscore, sep = "."), "IS NOT ''")))
 
   alldata$adlike <- sapply(alldata$mean,
@@ -250,15 +255,42 @@ priors <- c(prior(cauchy(0, 10), class = "Intercept"),
             prior(cauchy(0, 10), class = "b"))
 
 # Bayesian analysis
-cog_brms <- brm(clinscore ~ adlike + age, 
+cog_brms <- brm(clinscore ~  1 + adlike + age, 
                 data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = cumulative(),
+                family = cumulative("probit"),
                 prior = priors)
 
 summary(cog_brms)
+```
+
+```{r}
+ce <- conditional_effects(cog_brms, "adlike", categorical = TRUE)
+
+p2 <- plot(ce, plot = FALSE)[[1]] +
+  ylim(0.975, 1.) +
+  theme(legend.position = "None",
+        axis.title.x = element_blank())
+
+p3 <- plot(ce, plot = FALSE)[[1]] +
+  ylim(0., .02) +
+  theme(legend.position = "None",
+        axis.title.x = element_blank())
+
+p1 <- plot(ce, plot = FALSE)[[1]] +
+  labs(x = "AD-like") +
+  scale_fill_discrete(name = clinscore_name,
+                      labels = seq(0, 3, by = 1)) +
+  scale_colour_discrete(name = clinscore_name,
+                        labels = seq(0, 3, by = 1))
+
+grid.arrange(grobs = list(p1, p2, p3),
+             widths = c(2,1),
+             layout_matrix = rbind(c(1,2),
+                                   c(1,3)))
 
 ```
+
 
 ```{r}
 summary_model <- summary(cog_brms)
@@ -280,30 +312,31 @@ cog_brms %>%
 ```
 
 ```{r, fig.height=2.5, fig.width=6}
-cog_brms_draws <- spread_draws(cog_brms, b_adlikePositive, b_Intercept[])
+cog_brms_draws <- spread_draws(cog_brms, b_adlikePositive)
 # select the third intercept
 cog_brms_draws <- cog_brms_draws[seq(nrow(cog_brms_draws) / 3) * 3,]
 
 
-mean_intercept = mean(cog_brms_draws$b_Intercept)
+#mean_intercept = mean(cog_brms_draws$b_Intercept)
 sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+median_control = median(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
-  dplyr::select(b_adlikePositive, b_Intercept) %>%
-  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
-  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
-  group_by(name) %>%
+#  dplyr::select(b_adlikePositive, b_Intercept) %>%
+#  mutate(b_adlikePositive = median_control + b_adlikePositive) %>%
+#  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+#  group_by(name) %>%
   median_qi(.width = c(.8, .95)) %>%
-  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
-  geom_rect(xmin = mean_intercept - sd_control,
-            xmax = mean_intercept + sd_control,
+  ggplot(aes(x = b_adlikePositive, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = median_control - sd_control,
+            xmax = median_control + sd_control,
             ymin = 0, ymax = 3,
             fill = "cornsilk3") +
   geom_pointinterval() +
-  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
-  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
-  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
-  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  geom_vline(xintercept = median_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = median_control + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = median_control - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive")) +
   labs(x = clinscore_name) +
   theme(axis.title.y = element_blank(),
         axis.text = element_text(size = 15),
