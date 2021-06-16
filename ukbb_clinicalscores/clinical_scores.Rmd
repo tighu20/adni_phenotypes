@@ -52,7 +52,10 @@ getdata <- function(clinscore, threshold){
                                   "AND ukbb_t1_phenotype.eid = demogs.eid",
                                   "WHERE demogs.age IS NOT ''",
                                   "AND baseline.imaging = 1",
-                                  "AND", paste("clinicaldata", clinscore, sep = "."), "IS NOT ''")))
+                                  "AND", paste("clinicaldata", clinscore, sep = "."), "IS NOT ''"))) %>%
+    filter(visit <= 2) %>%
+    group_by(eid) %>%
+    filter(visit == max(visit))
 
   alldata$adlike <- sapply(alldata$mean,
                            function(x, thr) if (x >=  thr) { return("Positive") } else {return("Negative")},
@@ -88,7 +91,7 @@ alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -147,7 +150,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -181,46 +184,18 @@ clinscore_name = "Pairs matching, n correct"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
-  alldata <- dbGetQuery(ukbb.db,
-                        sql(paste("SELECT clinicaldata.eid, clinicaldata.noncancer_code_selfreported,",
-                                  "demogs.age, demogs.visit,",
-                                  paste("clinicaldata", clinscore, sep = "."), " AS clinscore,",
-                                  "ukbb_t1_phenotype.mean",
-                                  "FROM clinicaldata",
-                                  "JOIN ukbb_t1_phenotype, demogs ON clinicaldata.eid = ukbb_t1_phenotype.eid",
-                                  "AND clinicaldata.eid = demogs.eid",
-                                  "AND clinicaldata.visit = demogs.visit",
-                                  "AND demogs.eid = ukbb_t1_phenotype.eid",
-                                  "WHERE clinicaldata.t1_structural IS NOT ''",
-                                  "AND demogs.age IS NOT ''",
-                                  "AND", paste("clinicaldata", clinscore, sep = "."), "IS NOT ''")))
-
-  alldata$adlike <- sapply(alldata$mean,
-                           function(x, thr) if (x >=  thr) { return("Positive") } else {return("Negative")},
-                           thr = threshold)
-  
-  alldata <- alldata %>%
-    mutate(adlike = ifelse(noncancer_code_selfreported == "1263", "AD", adlike)) %>%
-    filter(adlike != "AD") # filter out those with AD at recruitment
-  
-  alldata$adlike <- as.factor(alldata$adlike)
-  alldata$clinscore <- as.numeric(alldata$clinscore) + 1 # add one to permit ordinal regression model
-  alldata$age <- as.numeric(alldata$age)
-  
-  # normalise age
-  mean_age <- mean(alldata$age)
-  sd_age <- sd(alldata$age)
-  alldata$age <- (alldata$age - mean_age) / sd_age
+alldata$clinscore <- alldata$clinscore + 1
   
 alldata %>%
-  group_by(adlike) %>%
-  summarise(n = length(eid))
+  group_by(adlike, visit) %>%
+  summarise(n = length(eid)) %>%
+  filter(visit == 0)
 ```
 
 ```{r}
-# Change to percentages
-total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
-total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
+# change to proportions
+total_pos = length(alldata[alldata$adlike == "Positive", "eid"][["eid"]])
+total_neg = length(alldata[alldata$adlike == "Negative", "eid"][["eid"]])
 
 alldata_summary <- alldata %>%
   group_by(adlike, clinscore) %>%
@@ -231,10 +206,10 @@ alldata_summary$totals <- sapply(alldata_summary$adlike,
                                  total_neg = total_neg)
 alldata_summary <- alldata_summary %>%
   group_by(adlike, clinscore) %>%
-  mutate(percentage = n / totals)
+  mutate(proportion = n / totals)
 
 p <- ggplot(alldata_summary,
-            aes(y = percentage,
+            aes(y = proportion,
                 x = adlike,
                 fill = clinscore)) +
   geom_histogram(stat = "identity",
@@ -250,18 +225,17 @@ print(p)
 
 
 ```{r}
-# priors
-priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
-            prior(cauchy(0, 10), class = "b"))
+# # priors
+# priors <- c(prior(student_t(3,0,2.5), class = "Intercept"))
 
-# Bayesian analysis
-cog_brms <- brm(clinscore ~  1 + adlike + age, 
-                data = alldata, 
-                iter = 5000, warmup = 1000, chains = 4,
-                family = cumulative("probit"),
-                prior = priors)
+# # Bayesian analysis
+# cog_brms <- brm(clinscore ~  1 + adlike + age, 
+#                 data = alldata, 
+#                 iter = 5000, warmup = 1000, chains = 4,
+#                 family = cumulative(),
+#                 prior = priors)
 
-summary(cog_brms)
+# summary(cog_brms)
 ```
 
 ```{r}
@@ -351,7 +325,7 @@ clinscore_name = "Pairs matching, n incorrect"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -410,7 +384,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -442,7 +416,7 @@ clinscore_name = "Pairs matching, time to completion"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -501,7 +475,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -535,7 +509,7 @@ clinscore_name = "Reaction time, duration to button press"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -594,7 +568,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -626,7 +600,7 @@ clinscore_name = "Reaction time, mean time of correct trials"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -685,7 +659,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -717,7 +691,7 @@ clinscore_name = "Number memory"
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -776,7 +750,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -812,7 +786,7 @@ alldata <- getdata(clinscore = clinscore,
   filter(clinscore != 0)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -866,7 +840,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -899,7 +873,7 @@ alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -957,7 +931,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -990,7 +964,7 @@ alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -1048,7 +1022,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -1082,7 +1056,7 @@ alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -1140,7 +1114,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -1173,7 +1147,7 @@ alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -1231,7 +1205,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%

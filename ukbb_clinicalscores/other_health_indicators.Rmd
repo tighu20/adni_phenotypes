@@ -15,12 +15,11 @@ library(rstan)
 library(multcomp)
 library(coda)
 library(tidybayes)
+library(gridExtra)
 
 # options for rstan
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
-
-set.seed(123)
 ```
 
 In this notebook we'll examine the correlation between the neuroimaging derived phenotype scores and clinical scores in the UK biobank population.
@@ -53,7 +52,9 @@ getdata <- function(clinscore, threshold){
                                   "WHERE demogs.age IS NOT ''",
                                   "AND baseline.imaging = 1",
                                   "AND", paste("clinicaldata", clinscore, sep = "."), "IS NOT ''"))) %>%
-  filter(visit == '2')
+    filter(visit <= 2) %>%
+    group_by(eid) %>%
+    filter(visit == max(visit))
 
   alldata$adlike <- sapply(alldata$mean,
                            function(x, thr) if (x >=  thr) { return("Positive") } else {return("Negative")},
@@ -100,7 +101,7 @@ rm("lefthand",
    "righthand")
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -192,7 +193,7 @@ alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -251,7 +252,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -285,7 +286,7 @@ alldata <- getdata(clinscore = clinscore,
                    threshold = threshold)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -344,7 +345,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -386,7 +387,7 @@ alldata <- rbind(bp_manual,
   mutate(clinscore = mean(clinscore))
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -486,7 +487,7 @@ alldata <- rbind(bp_manual,
   mutate(clinscore = mean(clinscore))
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -581,7 +582,7 @@ alldata <- getdata(clinscore = clinscore,
   filter(clinscore > 0)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -610,7 +611,7 @@ priors <- c(prior(normal(7, 10), class = "Intercept"),
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = skew_normal(),
+                #family = skew_normal(),
                 prior = priors)
 
 summary(cog_brms)
@@ -641,7 +642,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -676,7 +677,7 @@ alldata <- getdata(clinscore = clinscore,
   filter(clinscore >= 0)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -705,7 +706,6 @@ priors <- c(prior(cauchy(3, 50), class = "Intercept"),
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = skew_normal(),
                 prior = priors)
 
 summary(cog_brms)
@@ -736,7 +736,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -771,12 +771,12 @@ alldata <- getdata(clinscore = clinscore,
   filter(clinscore >= 0)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
 ```{r}
-# Change to percentages
+# Change to proportions
 total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
 total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
 
@@ -790,10 +790,10 @@ alldata_summary$totals <- sapply(alldata_summary$adlike,
 alldata_summary <- alldata_summary %>%
   mutate(clinscore = as.factor(clinscore)) %>%
   group_by(adlike, clinscore) %>%
-  mutate(percentage = n / totals)
+  mutate(proportion = n / totals)
 
 p <- ggplot(alldata_summary,
-            aes(y = percentage,
+            aes(y = proportion,
                 x = adlike,
                 fill = clinscore)) +
   geom_histogram(stat = "identity",
@@ -843,12 +843,25 @@ cog_brms %>%
 
 ```
 
+```{r}
+ce <- conditional_effects(cog_brms, "adlike")
+
+plot(ce, plot = FALSE)[[1]] +
+  labs(y = clinscore_name,
+       x = "AD-like")
+#   scale_fill_discrete(name = clinscore_name,
+#                       labels = seq(0, 3, by = 1)) +
+#   scale_colour_discrete(name = clinscore_name,
+#                         labels = seq(0, 3, by = 1))
+
+```
+
 ```{r, fig.height=2.5, fig.width=6}
 cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -883,12 +896,12 @@ alldata <- getdata(clinscore = clinscore,
   filter(clinscore >= 0)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
 ```{r}
-# change to percentages
+# change to proportions
 total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
 total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
 
@@ -901,10 +914,10 @@ alldata_summary$totals <- sapply(alldata_summary$adlike,
                                  total_neg = total_neg)
 alldata_summary <- alldata_summary %>%
   group_by(adlike, clinscore) %>%
-  mutate(percentage = n / totals)
+  mutate(proportion = n / totals)
 
 p <- ggplot(alldata_summary,
-            aes(y = percentage,
+            aes(y = proportion,
                 x = adlike,
                 fill = clinscore)) +
   geom_histogram(stat = "identity",
@@ -920,13 +933,31 @@ print(p)
 ```
 
 ```{r}
+# prior
+priors = c(prior(normal(0, 1),
+                 class = "Intercept"))
+
 # Bayesian analysis
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = binomial())
+                family = bernoulli(),
+                prior = priors)
 
 summary(cog_brms)
+
+```
+
+```{r}
+ce <- conditional_effects(cog_brms, "adlike")
+
+plot(ce, plot = FALSE)[[1]] +
+  labs(y = clinscore_name,
+       x = "AD-like")
+#   scale_fill_discrete(name = clinscore_name,
+#                       labels = seq(0, 3, by = 1)) +
+#   scale_colour_discrete(name = clinscore_name,
+#                         labels = seq(0, 3, by = 1))
 
 ```
 
@@ -954,7 +985,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -989,12 +1020,12 @@ alldata <- getdata(clinscore = clinscore,
   filter(clinscore > 0)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
 ```{r}
-# change to percentages
+# change to proportions
 total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
 total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
 
@@ -1007,10 +1038,10 @@ alldata_summary$totals <- sapply(alldata_summary$adlike,
                                  total_neg = total_neg)
 alldata_summary <- alldata_summary %>%
   group_by(adlike, clinscore) %>%
-  mutate(percentage = n / totals)
+  mutate(proportion = n / totals)
 
 p <- ggplot(alldata_summary,
-            aes(y = percentage,
+            aes(y = proportion,
                 x = adlike,
                 fill = clinscore)) +
   geom_histogram(stat = "identity",
@@ -1030,13 +1061,47 @@ print(p)
 priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
             prior(cauchy(0, 10), class = "b"))
 
-# Bayesian analysis - ordinal regression model
-cog_brms <- brm(clinscore ~ adlike + age, 
+# Bayesian analysis
+cog_brms <- brm(clinscore ~  1 + adlike + age, 
                 data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = sratio())
+                family = cumulative("probit"),
+                prior = priors)
 
 summary(cog_brms)
+```
+
+```{r}
+ce <- conditional_effects(cog_brms, "adlike", categorical = TRUE)
+
+p2 <- plot(ce, plot = FALSE)[[1]] +
+  ylim(0.62, .645) +
+  theme(legend.position = "None",
+        axis.title.x = element_blank())
+
+p3 <- plot(ce, plot = FALSE)[[1]] +
+  ylim(0., .23) +
+  theme(legend.position = "None",
+        axis.title.x = element_blank())
+
+p1 <- plot(ce, plot = FALSE)[[1]] +
+  labs(x = "AD-like") +
+  scale_fill_discrete(name = clinscore_name,
+                      labels = c("Excellent",
+                                 "Good",
+                                 "Fair",
+                                 "Poor")) +
+  scale_colour_discrete(name = clinscore_name,
+                        labels = c("Excellent",
+                                   "Good",
+                                   "Fair",
+                                   "Poor"))
+
+grid.arrange(grobs = list(p1, p2, p3),
+             widths = c(2,1),
+             layout_matrix = rbind(c(1,2),
+                                   c(1,3)))
+
 ```
 
 ```{r}
@@ -1064,7 +1129,7 @@ cog_brms_draws <- spread_draws(cog_brms, b_adlikePositive, b_Intercept[])
 cog_brms_draws <- cog_brms_draws[seq(nrow(cog_brms_draws) / 3) * 3,]
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -1099,12 +1164,12 @@ alldata <- getdata(clinscore = clinscore,
   filter(clinscore >= 0)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
 ```{r}
-# change to percentages
+# change to proportions
 total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
 total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
 
@@ -1117,10 +1182,10 @@ alldata_summary$totals <- sapply(alldata_summary$adlike,
                                  total_neg = total_neg)
 alldata_summary <- alldata_summary %>%
   group_by(adlike, clinscore) %>%
-  mutate(percentage = n / totals)
+  mutate(proportion = n / totals)
 
 p <- ggplot(alldata_summary,
-            aes(y = percentage,
+            aes(y = proportion,
                 x = adlike,
                 fill = clinscore)) +
   geom_histogram(stat = "identity",
@@ -1136,14 +1201,27 @@ print(p)
 ```
 
 ```{r}
+# prior
+priors = c(prior(normal(0, 1),
+                 class = "Intercept"))
+
 # Bayesian analysis
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
-                iter = 5000, warmup = 1000, chains = 4, 
-                family = binomial())
+                iter = 5000, warmup = 1000, chains = 4,
+                family = bernoulli(),
+                prior = priors)
 
 summary(cog_brms)
 
+```
+
+```{r}
+ce <- conditional_effects(cog_brms, "adlike")
+
+plot(ce, plot = FALSE)[[1]] +
+  labs(y = clinscore_name,
+       x = "AD-like")
 ```
 
 ```{r}
@@ -1170,7 +1248,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -1205,7 +1283,7 @@ alldata <- getdata(clinscore = clinscore,
   filter(clinscore >= 0)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -1265,7 +1343,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -1306,13 +1384,11 @@ alldata <- dbGetQuery(ukbb.db,
                                 "AND clinicaldata.eid = demogs.eid",
                                 "AND clinicaldata.visit = demogs.visit",
                                 "AND clinicaldata.eid = baseline.eid",
-                                "AND ukbb_t1_phenotype.eid = baseline.eid",
-                                "AND demogs.eid = baseline.eid",
                                 "AND ukbb_t1_phenotype.eid = demogs.eid",
                                 "WHERE demogs.age IS NOT ''",
                                 "AND baseline.imaging = 1",
                                 "AND", paste("demogs", clinscore, sep = "."), "IS NOT ''"))) %>%
-  filter(visit == '2')
+    filter(visit == 2)
 
 alldata$adlike <- sapply(alldata$mean,
                          function(x, thr) if (x >=  thr) { return("Positive") } else {return("Negative")},
@@ -1336,7 +1412,124 @@ alldata <- alldata %>%
   filter(clinscore >= 0)
 
 alldata %>%
-  group_by(adlike) %>%
+  group_by(adlike, visit) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
+# change to proportions
+total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
+total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
+
+alldata_summary <- alldata %>%
+  group_by(adlike, clinscore) %>%
+  summarise(n = length(eid))
+alldata_summary$totals <- sapply(alldata_summary$adlike,
+                                 function(x, total_pos, total_neg) if (x == "Positive") {return(total_pos)} else {return(total_neg)},
+                                 total_pos = total_pos,
+                                 total_neg = total_neg)
+alldata_summary <- alldata_summary %>%
+  group_by(adlike, clinscore) %>%
+  mutate(proportion = n / totals)
+
+p <- ggplot(alldata_summary,
+            aes(y = proportion,
+                x = adlike,
+                fill = clinscore)) +
+  geom_histogram(stat = "identity",
+                 position = position_dodge2()) +
+  labs(x = clinscore) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
+
+print(p)
+
+```
+
+```{r}
+# Bayesian analysis
+priors <- c(prior(normal(0,10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"))
+
+cog_brms <- brm(clinscore ~ adlike + age, 
+                data = alldata,
+                iter = 5000, warmup = 1000, chains = 4,
+                family = bernoulli(),
+                prior = priors)
+
+summary(cog_brms)
+
+```
+
+```{r}
+summary_model <- summary(cog_brms)
+
+cog_brms %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = summary_model$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = summary_model$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+```
+
+```{r}
+ce <- conditional_effects(cog_brms, "adlike")
+
+plot(ce, plot = FALSE)[[1]] +
+  labs(y = clinscore_name,
+       x = "AD-like")
+```
+
+```{r, fig.height=2.5, fig.width=6}
+cog_brms_draws <- cog_brms %>%
+  spread_draws(b_adlikePositive, b_Intercept)
+
+mean_intercept = mean(cog_brms_draws$b_Intercept)
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
+
+cog_brms_draws %>%
+  dplyr::select(b_adlikePositive, b_Intercept) %>%
+  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
+  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+  group_by(name) %>%
+  median_qi(.width = c(.8, .95)) %>%
+  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = mean_intercept - sd_control,
+            xmax = mean_intercept + sd_control,
+            ymin = 0, ymax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
+```
+
+# Falls
+```{r}
+clinscore = "falls_last_year"
+clinscore_name = "Neuroticism score"
+
+alldata <- getdata(clinscore = clinscore,
+                   threshold = threshold) %>%
+  filter(clinscore >= 0)
+
+alldata %>%
+  group_by(adlike, visit) %>%
   summarise(n = length(eid))
 ```
 
@@ -1396,7 +1589,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -1419,145 +1612,3 @@ cog_brms_draws %>%
         axis.text = element_text(size = 15),
         axis.title.x = element_text(size = 15))
 ```
-
-# Falls
-```{r}
-clinscore = "falls_last_year"
-clinscore_name = "Falls"
-
-alldata <- getdata(clinscore = clinscore,
-                   threshold = threshold) %>%
-  filter(clinscore >= 0)
-
-alldata %>%
-  group_by(adlike) %>%
-  summarise(n = length(eid))
-```
-
-```{r}
-# Change to percentages
-total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
-total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
-
-alldata_summary <- alldata %>%
-  group_by(adlike, clinscore) %>%
-  summarise(n = length(eid))
-alldata_summary$totals <- sapply(alldata_summary$adlike,
-                                 function(x, total_pos, total_neg) if (x == "Positive") {return(total_pos)} else {return(total_neg)},
-                                 total_pos = total_pos,
-                                 total_neg = total_neg)
-alldata_summary <- alldata_summary %>%
-  mutate(clinscore = as.factor(clinscore)) %>%
-  group_by(adlike, clinscore) %>%
-  mutate(percentage = n / totals)
-
-p <- ggplot(alldata_summary,
-            aes(y = percentage,
-                x = adlike,
-                fill = clinscore)) +
-  geom_histogram(stat = "identity",
-                 position = position_dodge2()) +
-  labs(x = clinscore) +
-  theme(axis.title.x = element_blank(),
-        #legend.position = "None",
-        axis.text = element_text(size = 20),
-        axis.title = element_text(size = 20))
-
-print(p)
-```
-
-```{r}
-priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
-            prior(cauchy(0, 10), class = "b"))
-
-# Bayesian analysis
-cog_brms <- brm(clinscore ~ adlike + age, 
-                data = alldata, 
-                iter = 5000, warmup = 1000, chains = 4,
-                family = cumulative("probit"),
-                prior = priors)
-
-summary(cog_brms)
-```
-
-```{r}
-ce <- conditional_effects(cog_brms, "adlike", categorical = TRUE)
-
-p2 <- plot(ce, plot = FALSE)[[1]] +
-  ylim(.775, .84) +
-  theme(legend.position = "None",
-        axis.title.x = element_blank())
-
-p3 <- plot(ce, plot = FALSE)[[1]] +
-  ylim(0., .17) +
-  theme(legend.position = "None",
-        axis.title.x = element_blank())
-
-p1 <- plot(ce, plot = FALSE)[[1]] +
-  labs(x = "AD-like") +
-  scale_fill_discrete(name = clinscore_name,
-                      labels = c("None",
-                                 "1 fall",
-                                 ">1 fall")) +
-  scale_colour_discrete(name = clinscore_name,
-                        labels = c("None",
-                                   "1 fall",
-                                   ">1 fall"))
-
-grid.arrange(grobs = list(p1, p2, p3),
-             widths = c(2,1),
-             layout_matrix = rbind(c(1,2),
-                                   c(1,3)))
-
-```
-
-```{r}
-summary_model <- summary(cog_brms)
-
-cog_brms %>%
-  spread_draws(b_adlikePositive) %>%
-  ggplot(aes(x = b_adlikePositive)) +
-  geom_density() +
-  geom_vline(aes(xintercept = mean(b_adlikePositive)),
-             colour = "blue",
-             linetype = "dashed") +
-  geom_vline(xintercept = summary_model$fixed[3,3],
-             colour = "blue",
-             linetype = "dashed") + 
-  geom_vline(xintercept = summary_model$fixed[3,4],
-             colour = "blue",
-             linetype = "dashed")
-
-```
-
-```{r, fig.height=2.5, fig.width=6}
-cog_brms_draws <- spread_draws(cog_brms, b_adlikePositive, b_Intercept[])
-# select the third intercept
-cog_brms_draws <- cog_brms_draws[seq(nrow(cog_brms_draws) / 2) * 2 - 1,] 
-
-
-mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
-
-cog_brms_draws %>%
-  dplyr::select(b_adlikePositive, b_Intercept) %>%
-  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
-  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
-  group_by(name) %>%
-  median_qi(.width = c(.8, .95)) %>%
-  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
-  geom_rect(xmin = mean_intercept - sd_control,
-            xmax = mean_intercept + sd_control,
-            ymin = 0, ymax = 3,
-            fill = "cornsilk3") +
-  geom_pointinterval() +
-  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
-  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
-  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
-  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
-  labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank(),
-        axis.text = element_text(size = 15),
-        axis.title.x = element_text(size = 15))
-```
-
