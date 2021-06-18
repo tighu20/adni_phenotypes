@@ -571,6 +571,242 @@ cog_brms_draws %>%
 ```
 
 
+## Combined BP
+```{r}
+clinscore_name = "Combined BP"
+
+bp_manual <- getdata(clinscore = "BP_systolic_manual",
+                     threshold = threshold)
+
+# diastolic/systolic seems to be mis-labelled
+bp_automatic <- getdata(clinscore = "BP_diastolic_automated",
+                        threshold = threshold)
+alldata_systolic <- rbind(bp_manual,
+                 bp_automatic) %>%
+  group_by(eid) %>%
+  mutate(clinscore = mean(clinscore))
+
+# diastolic BP
+bp_manual <- getdata(clinscore = "BP_diastolic_manual",
+                     threshold = threshold)
+
+# mislabelling of systolic/diastolic data
+bp_automatic <- getdata(clinscore = "BP_systolic_automated",
+                        threshold = threshold)
+alldata_diastolic <- rbind(bp_manual,
+                 bp_automatic) %>%
+  group_by(eid) %>%
+  mutate(clinscore = mean(clinscore))
+
+
+# combine
+alldata <- inner_join(alldata_systolic, alldata_diastolic[,c("eid", "clinscore")],
+                       by = "eid") %>%
+  mutate(clinscore = clinscore.x + clinscore.y)
+
+alldata %>%
+  group_by(adlike, visit) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
+
+print(p)
+
+```
+
+```{r}
+# Bayesian analysis
+priors <- c(prior(normal(220, 50), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
+            prior(cauchy(0, 10), class = "sigma"))
+
+cog_brms <- brm(clinscore ~ adlike + age, 
+                data = alldata, 
+                iter = 5000, warmup = 1000, chains = 4, 
+                prior = priors)
+
+summary(cog_brms)
+
+```
+
+```{r}
+summary_model <- summary(cog_brms)
+
+cog_brms %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = summary_model$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = summary_model$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+```
+
+```{r, fig.height=2.5, fig.width=6}
+cog_brms_draws <- cog_brms %>%
+  spread_draws(b_adlikePositive, b_Intercept)
+
+mean_intercept = mean(cog_brms_draws$b_Intercept)
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
+
+cog_brms_draws %>%
+  dplyr::select(b_adlikePositive, b_Intercept) %>%
+  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
+  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+  group_by(name) %>%
+  median_qi(.width = c(.8, .95)) %>%
+  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = mean_intercept - sd_control,
+            xmax = mean_intercept + sd_control,
+            ymin = 0, ymax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
+```
+
+## Pulse pressure
+```{r}
+clinscore_name = "Pulse pressure"
+
+bp_manual <- getdata(clinscore = "BP_systolic_manual",
+                     threshold = threshold)
+
+# diastolic/systolic seems to be mis-labelled
+bp_automatic <- getdata(clinscore = "BP_diastolic_automated",
+                        threshold = threshold)
+alldata_systolic <- rbind(bp_manual,
+                 bp_automatic) %>%
+  group_by(eid) %>%
+  mutate(clinscore = mean(clinscore))
+
+# diastolic BP
+bp_manual <- getdata(clinscore = "BP_diastolic_manual",
+                     threshold = threshold)
+
+# mislabelling of systolic/diastolic data
+bp_automatic <- getdata(clinscore = "BP_systolic_automated",
+                        threshold = threshold)
+alldata_diastolic <- rbind(bp_manual,
+                 bp_automatic) %>%
+  group_by(eid) %>%
+  mutate(clinscore = mean(clinscore))
+
+
+# combine
+alldata <- inner_join(alldata_systolic, alldata_diastolic[,c("eid", "clinscore")],
+                       by = "eid") %>%
+  mutate(clinscore = clinscore.x - clinscore.y)
+
+alldata %>%
+  group_by(adlike, visit) %>%
+  summarise(n = length(eid))
+```
+
+```{r}
+p <- ggplot(alldata,
+            aes(y = clinscore,
+                x = adlike,
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
+
+print(p)
+
+```
+
+```{r}
+# Bayesian analysis
+priors <- c(prior(normal(60, 50), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
+            prior(cauchy(0, 10), class = "sigma"))
+
+cog_brms <- brm(clinscore ~ adlike + age, 
+                data = alldata, 
+                iter = 5000, warmup = 1000, chains = 4, 
+                prior = priors)
+
+summary(cog_brms)
+
+```
+
+```{r}
+summary_model <- summary(cog_brms)
+
+cog_brms %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = summary_model$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = summary_model$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+```
+
+```{r, fig.height=2.5, fig.width=6}
+cog_brms_draws <- cog_brms %>%
+  spread_draws(b_adlikePositive, b_Intercept)
+
+mean_intercept = mean(cog_brms_draws$b_Intercept)
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
+
+cog_brms_draws %>%
+  dplyr::select(b_adlikePositive, b_Intercept) %>%
+  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
+  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+  group_by(name) %>%
+  median_qi(.width = c(.8, .95)) %>%
+  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = mean_intercept - sd_control,
+            xmax = mean_intercept + sd_control,
+            ymin = 0, ymax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
+```
+
+
+
 
 ## Sleep duration
 ```{r}
@@ -776,9 +1012,9 @@ alldata %>%
 ```
 
 ```{r}
-# Change to proportions
-total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
-total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
+# change to proportions
+total_pos = length(alldata[alldata$adlike == "Positive", "eid"][["eid"]])
+total_neg = length(alldata[alldata$adlike == "Negative", "eid"][["eid"]])
 
 alldata_summary <- alldata %>%
   group_by(adlike, clinscore) %>%
@@ -788,7 +1024,6 @@ alldata_summary$totals <- sapply(alldata_summary$adlike,
                                  total_pos = total_pos,
                                  total_neg = total_neg)
 alldata_summary <- alldata_summary %>%
-  mutate(clinscore = as.factor(clinscore)) %>%
   group_by(adlike, clinscore) %>%
   mutate(proportion = n / totals)
 
@@ -800,7 +1035,7 @@ p <- ggplot(alldata_summary,
                  position = position_dodge2()) +
   labs(x = clinscore) +
   theme(axis.title.x = element_blank(),
-        #legend.position = "None",
+        legend.position = "None",
         axis.text = element_text(size = 20),
         axis.title = element_text(size = 20))
 
@@ -902,8 +1137,8 @@ alldata %>%
 
 ```{r}
 # change to proportions
-total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
-total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
+total_pos = length(alldata[alldata$adlike == "Positive", "eid"][["eid"]])
+total_neg = length(alldata[alldata$adlike == "Negative", "eid"][["eid"]])
 
 alldata_summary <- alldata %>%
   group_by(adlike, clinscore) %>%
@@ -929,7 +1164,6 @@ p <- ggplot(alldata_summary,
         axis.title = element_text(size = 20))
 
 print(p)
-
 ```
 
 ```{r}
@@ -1026,8 +1260,8 @@ alldata %>%
 
 ```{r}
 # change to proportions
-total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
-total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
+total_pos = length(alldata[alldata$adlike == "Positive", "eid"][["eid"]])
+total_neg = length(alldata[alldata$adlike == "Negative", "eid"][["eid"]])
 
 alldata_summary <- alldata %>%
   group_by(adlike, clinscore) %>%
@@ -1161,7 +1395,7 @@ clinscore_name = "Hearing difficulty"
 
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold) %>%
-  filter(clinscore >= 0)
+  filter(clinscore >= 0 && clinscore < 10)
 
 alldata %>%
   group_by(adlike, visit) %>%
@@ -1170,8 +1404,8 @@ alldata %>%
 
 ```{r}
 # change to proportions
-total_pos = length(alldata[alldata$adlike == "Positive", "eid"])
-total_neg = length(alldata[alldata$adlike == "Negative", "eid"])
+total_pos = length(alldata[alldata$adlike == "Positive", "eid"][["eid"]])
+total_neg = length(alldata[alldata$adlike == "Negative", "eid"][["eid"]])
 
 alldata_summary <- alldata %>%
   group_by(adlike, clinscore) %>%
@@ -1495,7 +1729,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
+sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -1522,7 +1756,7 @@ cog_brms_draws %>%
 # Falls
 ```{r}
 clinscore = "falls_last_year"
-clinscore_name = "Neuroticism score"
+clinscore_name = "Falls"
 
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold) %>%
@@ -1534,81 +1768,80 @@ alldata %>%
 ```
 
 ```{r}
-p <- ggplot(alldata,
-            aes(y = clinscore,
+# change to proportions
+total_pos = length(alldata[alldata$adlike == "Positive", "eid"][["eid"]])
+total_neg = length(alldata[alldata$adlike == "Negative", "eid"][["eid"]])
+
+alldata_summary <- alldata %>%
+  group_by(adlike, clinscore) %>%
+  summarise(n = length(eid))
+alldata_summary$totals <- sapply(alldata_summary$adlike,
+                                 function(x, total_pos, total_neg) if (x == "Positive") {return(total_pos)} else {return(total_neg)},
+                                 total_pos = total_pos,
+                                 total_neg = total_neg)
+alldata_summary <- alldata_summary %>%
+  group_by(adlike, clinscore) %>%
+  mutate(proportion = n / totals)
+
+p <- ggplot(alldata_summary,
+            aes(y = proportion,
                 x = adlike,
-                fill = adlike)) +
-  geom_boxplot() +
-  labs(y = clinscore_name) +
+                fill = clinscore)) +
+  geom_histogram(stat = "identity",
+                 position = position_dodge2()) +
+  labs(x = clinscore) +
   theme(axis.title.x = element_blank(),
-        legend.position = "None",
         axis.text = element_text(size = 20),
         axis.title = element_text(size = 20))
 
 print(p)
-
 ```
 
-```{r}
-# Bayesian analysis
-priors <- c(prior(student_t(3, 3, 3), class = "Intercept"), 
-            prior(cauchy(0, 10), class = "b"),
-            prior(cauchy(0, 10), class = "sigma"))
 
-cog_brms <- brm(clinscore ~ adlike + age, 
-                data = alldata,
+```{r}
+# priors
+priors <- c(prior(cauchy(0, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"))
+
+# Bayesian analysis
+cog_brms <- brm(clinscore ~  1 + adlike + age, 
+                data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = student(),
+                family = cumulative("probit"),
                 prior = priors)
 
 summary(cog_brms)
-
 ```
 
 ```{r}
-summary_model <- summary(cog_brms)
+ce <- conditional_effects(cog_brms, "adlike", categorical = TRUE)
 
-cog_brms %>%
-  spread_draws(b_adlikePositive) %>%
-  ggplot(aes(x = b_adlikePositive)) +
-  geom_density() +
-  geom_vline(aes(xintercept = mean(b_adlikePositive)),
-             colour = "blue",
-             linetype = "dashed") +
-  geom_vline(xintercept = summary_model$fixed[2,3],
-             colour = "blue",
-             linetype = "dashed") + 
-  geom_vline(xintercept = summary_model$fixed[2,4],
-             colour = "blue",
-             linetype = "dashed")
+p2 <- plot(ce, plot = FALSE)[[1]] +
+  ylim(.75, .85) +
+  theme(legend.position = "None",
+        axis.title.x = element_blank())
+
+p3 <- plot(ce, plot = FALSE)[[1]] +
+  ylim(0., .2) +
+  theme(legend.position = "None",
+        axis.title.x = element_blank())
+
+p1 <- plot(ce, plot = FALSE)[[1]] +
+  labs(x = "AD-like") +
+  scale_fill_discrete(name = clinscore_name,
+                      labels = c("No falls",
+                                 "1 fall",
+                                 "> 1 fall")) +
+  scale_colour_discrete(name = clinscore_name,
+                        labels = c("No falls",
+                                   "1 fall",
+                                   "> 1 fall"))
+
+grid.arrange(grobs = list(p1, p2, p3),
+             widths = c(2,1),
+             layout_matrix = rbind(c(1,2),
+                                   c(1,3)))
 
 ```
 
-```{r, fig.height=2.5, fig.width=6}
-cog_brms_draws <- cog_brms %>%
-  spread_draws(b_adlikePositive, b_Intercept)
 
-mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
-
-cog_brms_draws %>%
-  dplyr::select(b_adlikePositive, b_Intercept) %>%
-  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
-  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
-  group_by(name) %>%
-  median_qi(.width = c(.8, .95)) %>%
-  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
-  geom_rect(xmin = mean_intercept - sd_control,
-            xmax = mean_intercept + sd_control,
-            ymin = 0, ymax = 3,
-            fill = "cornsilk3") +
-  geom_pointinterval() +
-  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
-  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
-  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
-  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
-  labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank(),
-        axis.text = element_text(size = 15),
-        axis.title.x = element_text(size = 15))
-```

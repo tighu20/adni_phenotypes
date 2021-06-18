@@ -182,14 +182,17 @@ clinscore = "pairsmatching_n_correct"
 clinscore_name = "Pairs matching, n correct"
 
 alldata <- getdata(clinscore = clinscore,
-                   threshold = threshold)
+                   threshold = threshold) %>%
+  filter(clinscore <=3)
 
-alldata$clinscore <- alldata$clinscore + 1
+alldata$clinscore <- factor(alldata$clinscore + 1,
+                            ordered = c(1,2,3,4))
   
 alldata %>%
   group_by(adlike, visit) %>%
   summarise(n = length(eid)) %>%
   filter(visit == 0)
+
 ```
 
 ```{r}
@@ -216,7 +219,6 @@ p <- ggplot(alldata_summary,
                  position = position_dodge2()) +
   labs(x = clinscore) +
   theme(axis.title.x = element_blank(),
-        legend.position = "None",
         axis.text = element_text(size = 20),
         axis.title = element_text(size = 20))
 
@@ -225,24 +227,24 @@ print(p)
 
 
 ```{r}
-# # priors
-# priors <- c(prior(student_t(3,0,2.5), class = "Intercept"))
+# priors
+priors <- c(prior(student_t(3,0,2.5), class = "Intercept"))
 
-# # Bayesian analysis
-# cog_brms <- brm(clinscore ~  1 + adlike + age, 
-#                 data = alldata, 
-#                 iter = 5000, warmup = 1000, chains = 4,
-#                 family = cumulative(),
-#                 prior = priors)
+# Bayesian analysis
+cog_brms <- brm(clinscore ~  1 + adlike + age, 
+                data = alldata, 
+                iter = 5000, warmup = 1000, chains = 4,
+                family = cumulative(),
+                prior = priors)
 
-# summary(cog_brms)
+summary(cog_brms)
 ```
 
 ```{r}
 ce <- conditional_effects(cog_brms, "adlike", categorical = TRUE)
 
 p2 <- plot(ce, plot = FALSE)[[1]] +
-  ylim(0.975, 1.) +
+  ylim(0.975, .995) +
   theme(legend.position = "None",
         axis.title.x = element_blank())
 
@@ -285,37 +287,6 @@ cog_brms %>%
 
 ```
 
-```{r, fig.height=2.5, fig.width=6}
-cog_brms_draws <- spread_draws(cog_brms, b_adlikePositive)
-# select the third intercept
-cog_brms_draws <- cog_brms_draws[seq(nrow(cog_brms_draws) / 3) * 3,]
-
-
-#mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
-median_control = median(alldata[alldata$adlike == "Negative", "clinscore"]) * 0.1
-
-cog_brms_draws %>%
-#  dplyr::select(b_adlikePositive, b_Intercept) %>%
-#  mutate(b_adlikePositive = median_control + b_adlikePositive) %>%
-#  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
-#  group_by(name) %>%
-  median_qi(.width = c(.8, .95)) %>%
-  ggplot(aes(x = b_adlikePositive, xmin = .lower, xmax = .upper)) +
-  geom_rect(xmin = median_control - sd_control,
-            xmax = median_control + sd_control,
-            ymin = 0, ymax = 3,
-            fill = "cornsilk3") +
-  geom_pointinterval() +
-  geom_vline(xintercept = median_control, linetype = "dashed", colour = "blue") +
-  geom_vline(xintercept = median_control + sd_control, linetype = "dashed", colour = "blue") +
-  geom_vline(xintercept = median_control - sd_control, linetype = "dashed", colour = "blue") +
-  scale_y_discrete(labels = c("AD-like positive")) +
-  labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank(),
-        axis.text = element_text(size = 15),
-        axis.title.x = element_text(size = 15))
-```
 
 ### n incorrect
 ```{r}

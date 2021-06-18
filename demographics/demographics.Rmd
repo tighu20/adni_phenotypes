@@ -104,7 +104,36 @@ nacc_clindata_summary <- nacc_clindata %>%
 nacc_clindata_summary_xtable <- xtable(nacc_clindata_summary)
 print(nacc_clindata_summary_xtable,
       include.rownames = FALSE)
+```
 
+```{r}
+diagnosis_map = list("Alzheimer's disease (AD)" = 'AD',
+                 'Vascular brain injury or vascular dementia including stroke' = 'OD',
+                 'Lewy body disease (LBD)' = 'OD', 
+                 'Control' = 'Control', 
+                 'Depression' = 'OND',
+                 'Missing/unknown' = 'remove', ## <<---------- !
+                 'Other neurologic, genetic, or infectious condition' = 'OND',
+                 'Cognitive impairment for other specified reasons (i.e., written-in values)' = 'OND',
+                 'Prion disease (CJD, other)' = 'OD', 
+                 'FTLD, other' = 'OD', 
+                 'Anxiety disorder' = 'OND',
+                 'Corticobasal degeneration (CBD)' = 'OD',
+                 'Cognitive impairment due to medications' = 'OND',
+                 'Other psychiatric disease' = 'OND',
+                 'Progressive supranuclear palsy (PSP)' = 'OD',
+                 'Cognitive impairment due to systemic disease or medical illness' = 'OND',
+                 'Traumatic brain injury (TBI)' = 'OND',
+                 'Cognitive impairment due to alcohol abuse' = 'OND', 
+                 'Bipolar disorder' = 'OND',
+                 'Schizophrenia or other psychosis' = 'OND',
+                 'FTLD with motor neuron disease (e.g., ALS)' = 'OD'
+                )
+```
+
+
+
+```{r}
 rm(list = c("nacc_clindata_summary",
             "nacc_clindata",
             "nacc_clindata_summary_xtable"))
@@ -127,7 +156,9 @@ ukbb_data <- dbGetQuery(ukbb.db,
                                   "AND clinicaldata.visit = demogs.visit",
                                   #"WHERE clinicaldata.visit = '2'",
                                   "WHERE baseline.imaging = 1"))) %>%
-  filter(visit == '2')
+    filter(visit <= 2) %>%
+    group_by(eid) %>%
+    filter(visit == max(visit))
 
 
 ukbb_data_summary <- ukbb_data %>%
