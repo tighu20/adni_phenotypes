@@ -144,7 +144,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(cog_brms_draws$b_Intercept) * 1
+sd_control = sd(adnidata[adnidata$DX_bl == "CN", "MMSE"]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%

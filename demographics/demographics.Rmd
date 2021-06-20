@@ -9,11 +9,48 @@ library(ggplot2)
 library(xtable)
 library(janitor)
 library(RSQLite)
+library(DT)
 ```
 
 ADNI demographics
 
 ```{r}
+# import ADNI clinical scores
+adni.clin <- read.table("../data/ADNIMERGE_2020_07_01.csv",
+                        sep = ",",
+                        header = TRUE) %>%
+  filter(VISCODE == "bl") %>%
+  mutate(subj = paste("sub", gsub("_", "-", PTID), sep = "-"))
+   
+
+# import AD-like results
+adni.results <- read.table("../results/latest_output_adni_50.csv",
+                           sep = ",",
+                           header = TRUE)
+names(adni.results)[1] <- "subj"
+adni.test.results <- read.table("../results/latest_output_adni_train_50.csv",
+                                sep = ",",
+                                header = TRUE)
+names(adni.test.results)[1] <- "subj"
+
+adni.results <- rbind(adni.results, adni.test.results)
+rm("adni.test.results")
+
+# join clinical data to imaging data
+adnidata <- left_join(adni.results,
+                      adni.clin,
+                      by = c("subj"))
+
+
+# set and apply threshold
+threshold = 0.5
+adnidata$adlike <- sapply(adnidata$mean,
+                          function(x, thr) if (x >=  thr) { return("Positive") } else {return("Negative")},
+                          thr = threshold)
+  
+
+rm("adni.clin")
+
 # Summarise
 adnidata_summary <- adnidata %>%
   group_by(DX_bl) %>%
