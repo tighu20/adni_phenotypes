@@ -86,10 +86,14 @@ adnidata %>%
 adnidata %>%
   filter(!is.na(MMSE)) %>%
   group_by(DX_bl) %>%
-  summarise(n = length(subj))
+  summarise(n = n(),
+            .groups = "drop")
 ```
 
 ```{r}
+clinscore = "MMSE"
+clinscore_name = "MMSE"
+
 adnidata %>%
   filter(!is.na(MMSE)) %>%
   ggplot(aes(x = MMSE,
@@ -171,6 +175,8 @@ cog_brms_draws %>%
 
 # MOCA
 ```{r}
+clinscore = "MOCA"
+clinscore_name = "MoCA"
 adnidata %>%
   filter(!is.na(MOCA)) %>%
   group_by(DX_bl) %>%
