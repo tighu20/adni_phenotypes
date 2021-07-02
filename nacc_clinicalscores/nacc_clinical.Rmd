@@ -27,7 +27,13 @@ clindata = read.table(clinical_data_file, header = TRUE)
 
 clindata_summary <- clindata %>%
   group_by(diagnosis) %>%
-  summarise(n = length(subj)) %>%
+  #summarise(n = length(subj)) %>%
+  summarise(n = length(subj),
+            age = paste(round(mean(age, na.rm = TRUE), digits = 1),
+                              paste("(", round(sd(age, na.rm = TRUE), digits = 1), ")", sep = "")),
+            sex = paste(length(gender[gender=="Male"]),
+                           length(gender[gender=="Female"]),
+                           sep = "/")) %>%
   adorn_totals("row")
 
 datatable(clindata_summary)
@@ -85,6 +91,28 @@ results$diagnosis <- factor(unlist(results$diagnosis),
 
 rm(clindata)
 
+results_summary <- results %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = paste(round(mean(age, na.rm = TRUE), digits = 1),
+                              paste("(", round(sd(age, na.rm = TRUE), digits = 1), ")", sep = "")),
+            sex = paste(length(gender[gender=="Male"]),
+                           length(gender[gender=="Female"]),
+                           sep = "/")) %>%
+  adorn_totals("row")
+
+datatable(results_summary)
+
+results_summary_xtable <- xtable(results_summary)
+print(results_summary_xtable, include.rownames = FALSE)
+```
+
+```{r}
+# add column for AD-like positive/negative
+results <- results %>%
+  group_by(subj) %>%
+  mutate(adlike = if (mean > 0.5) {"Positive"} else {"Negative"})
+
 ```
 
 # MMSE
@@ -96,7 +124,7 @@ naccmmse <- results %>%
   filter(!is.na(nacmmse))
 
 naccmmse_summary <- naccmmse %>%
-  group_by(diagnosis) %>%
+  group_by(adlike) %>%
   summarise(n = length(subj),
             age = round(mean(age, na.rm = TRUE), digits = 1),
             sex = paste(length(gender[gender == "Female"]),
@@ -107,7 +135,7 @@ datatable(naccmmse_summary)
 ```
 
 ```{r}
-p_mmse <- ggplot(naccmmse, aes(x = mean, y = nacmmse, group = diagnosis, colour = diagnosis))
+p_mmse <- ggplot(naccmmse, aes(x = mean, y = nacmmse, group = adlike, colour = adlike))
 p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm)
 print(p_mmse)
 ```
@@ -137,17 +165,27 @@ print(p_mmse)
 ```
 
 ```{r}
+# z-score values
+mean_age = mean(naccmmse$age)
+sd_age = sd(naccmmse$age)
+naccmmse$age <- (naccmmse$age - mean_age) / sd_age
+
+mean_nacmmse = mean(naccmmse$nacmmse)
+sd_nacmmse = sd(naccmmse$nacmmse)
+naccmmse$nacmmse <- (naccmmse$nacmmse - mean_nacmmse) / sd_nacmmse
+
+mean_mean = mean(naccmmse$mean)
+sd_mean = sd(naccmmse$mean)
+naccmmse$mean <- (naccmmse$mean - mean_mean) / sd_mean
+
+
 # set priors
 mmse_priors = c(set_prior("normal(0,10)", class = "b", coef = "age"),
-                set_prior("cauchy(0,1)", class = "b", coef = "diagnosisAD"),
-                set_prior("cauchy(0,1)", class = "b", coef = "diagnosisOD"),
-                set_prior("cauchy(0,1)", class = "b", coef = "diagnosisOND"),
+                set_prior("cauchy(0,1)", class = "b", coef = "adlikePositive"),
                 set_prior("cauchy(0,1)", class = "b", coef = "mean"),
-                set_prior("cauchy(0,1)", class = "b", coef = "mean:diagnosisAD"),
-                set_prior("cauchy(0,1)", class = "b", coef = "mean:diagnosisOD"),
-                set_prior("cauchy(0,1)", class = "b", coef = "mean:diagnosisOND"))
+                set_prior("cauchy(0,1)", class = "b", coef = "mean:adlikePositive"))
 
-fit_mmse <- brm(nacmmse | trunc(ub = 30, lb = 0) ~ mean * diagnosis + age,
+fit_mmse <- brm(nacmmse ~ mean * adlike + age,
                 data = naccmmse,
                 prior = mmse_priors,
                 family = "skew_normal",
@@ -155,12 +193,26 @@ fit_mmse <- brm(nacmmse | trunc(ub = 30, lb = 0) ~ mean * diagnosis + age,
                 chains = 4,
                 seed = 5)
 
-summary(fit_mmse)
+fit_mmse_summary <- summary(fit_mmse)
+fit_mmse_summary
 ```
+
+
 ```{r}
 # Plot posteriors
-posterior <- as.array(fit_mmse) %>%
- spread_draws()
+fit_mmse %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = fit_mmse_summary$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = fit_mmse_summary$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
 
 
 
