@@ -15,6 +15,7 @@ library(bayesplot)
 library(tidybayes)
 library(xtable)
 library(janitor)
+library(tidyr)
 
 options(mc.cores = parallel::detectCores())
 set.seed(5)
@@ -126,6 +127,9 @@ naccmmse <- results %>%
 naccmmse_summary <- naccmmse %>%
   group_by(adlike) %>%
   summarise(n = length(subj),
+            mmse = paste(round(mean(nacmmse), digits = 1),
+                         " (", round(sd(nacmmse), digits = 1), ")",
+                         sep = ""),
             age = round(mean(age, na.rm = TRUE), digits = 1),
             sex = paste(length(gender[gender == "Female"]),
                         length(gender[gender == "Male"]),
@@ -133,6 +137,21 @@ naccmmse_summary <- naccmmse %>%
 
 datatable(naccmmse_summary)
 ```
+```{r}
+p <- ggplot(naccmmse,
+            aes(y = nacmmse,
+                x = adlike,
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
+
+print(p)
+```
+
 
 ```{r}
 p_mmse <- ggplot(naccmmse, aes(x = mean, y = nacmmse, group = adlike, colour = adlike))
@@ -141,27 +160,68 @@ print(p_mmse)
 ```
 
 ```{r}
-# # z-score mmse
-# mmse_mean = mean(naccmmse$nacmmse, na.rm = TRUE)
-# mmse_sd = sd(naccmmse$nacmmse, na.rm = TRUE)
+# Bayesian analysis
+priors <- c(prior(cauchy(10, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
+            prior(cauchy(0, 10), class = "sigma"))
 
-# naccmmse <- naccmmse %>%
-#   mutate(nacmmse = (nacmmse - mmse_mean) / mmse_sd)
+cog_brms <- brm(nacmmse ~ adlike + age, 
+                data = naccmmse, 
+                iter = 5000, warmup = 1000, chains = 4, 
+                prior = priors)
 
-# # z-score mean
-# phenomean_mean = mean(naccmmse$mean, na.rm = TRUE)
-# phenomean_sd = sd(naccmmse$mean, na.rm = TRUE)
+summary(cog_brms)
 
-# naccmmse <- naccmmse %>%
-#   mutate(mean = (mean - phenomean_mean) / phenomean_sd)
 
-# # z-score mean
-# age_mean = mean(naccmmse$age, na.rm = TRUE)
-# age_sd = sd(naccmmse$age, na.rm = TRUE)
+```
 
-# naccmmse <- naccmmse %>%
-#   mutate(age = (age - age_mean) / age_sd)
 
+```{r}
+summary_model <- summary(cog_brms)
+
+cog_brms %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = summary_model$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = summary_model$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+```
+
+```{r, fig.height=2.5, fig.width=6}
+cog_brms_draws <- cog_brms %>%
+  spread_draws(b_adlikePositive, b_Intercept)
+
+mean_intercept = mean(cog_brms_draws$b_Intercept)
+sd_control = sd(naccmmse[naccmmse$adlike == "Negative", "nacmmse"][["nacmmse"]]) * 0.1
+
+cog_brms_draws %>%
+  dplyr::select(b_adlikePositive, b_Intercept) %>%
+  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
+  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+  group_by(name) %>%
+  median_qi(.width = c(.8, .95)) %>%
+  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = mean_intercept - sd_control,
+            xmax = mean_intercept + sd_control,
+            ymin = 0, ymax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ```{r}
@@ -180,7 +240,7 @@ naccmmse$mean <- (naccmmse$mean - mean_mean) / sd_mean
 
 
 # set priors
-mmse_priors = c(set_prior("normal(0,10)", class = "b", coef = "age"),
+mmse_priors = c(set_prior("cauchy(0,1)", class = "b", coef = "age"),
                 set_prior("cauchy(0,1)", class = "b", coef = "adlikePositive"),
                 set_prior("cauchy(0,1)", class = "b", coef = "mean"),
                 set_prior("cauchy(0,1)", class = "b", coef = "mean:adlikePositive"))
@@ -232,12 +292,18 @@ print(posterior_plot)
 # MOCA
 
 ```{r}
+clinscore = "naccmoca"
+clinscore_name = "MoCA"
+
 naccmoca <- results %>%
   filter(!is.na(naccmoca))
 
 naccmoca_summary <- naccmoca %>%
-  group_by(diagnosis) %>%
+  group_by(adlike) %>%
   summarise(n = length(subj),
+            moca = paste(round(mean(naccmoca), digits = 1),
+                         " (", round(sd(naccmoca), digits = 1), ")",
+                         sep = ""),
             age = round(mean(age, na.rm = TRUE), digits = 1),
             sex = paste(length(gender[gender == "Female"]),
                         length(gender[gender == "Male"]),
@@ -245,11 +311,153 @@ naccmoca_summary <- naccmoca %>%
 
 datatable(naccmoca_summary)
 ```
+```{r}
+p <- ggplot(naccmoca,
+            aes(y = naccmoca,
+                x = adlike,
+                fill = adlike)) +
+  geom_boxplot() +
+  labs(y = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        legend.position = "None",
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
+
+print(p)
+```
+
 
 ```{r}
-p_mmse <- ggplot(naccmoca, aes(x = mean, y = naccmoca, group = diagnosis, colour = diagnosis))
+p_mmse <- ggplot(naccmoca, aes(x = mean, y = naccmoca, group = adlike, colour = adlike))
 p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm)
 print(p_mmse)
+```
+
+```{r}
+# Bayesian analysis
+priors <- c(prior(cauchy(10, 10), class = "Intercept"), 
+            prior(cauchy(0, 10), class = "b"), 
+            prior(cauchy(0, 10), class = "sigma"))
+
+cog_brms <- brm(naccmoca ~ adlike + age, 
+                data = naccmoca, 
+                iter = 5000, warmup = 1000, chains = 4, 
+                prior = priors)
+
+summary(cog_brms)
+
+
+```
+
+
+```{r}
+summary_model <- summary(cog_brms)
+
+cog_brms %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = summary_model$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = summary_model$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+```
+
+```{r, fig.height=2.5, fig.width=6}
+cog_brms_draws <- cog_brms %>%
+  spread_draws(b_adlikePositive, b_Intercept)
+
+mean_intercept = mean(cog_brms_draws$b_Intercept)
+sd_control = sd(naccmoca[naccmoca$adlike == "Negative", "naccmoca"][["naccmoca"]]) * 0.1
+
+cog_brms_draws %>%
+  dplyr::select(b_adlikePositive, b_Intercept) %>%
+  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
+  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+  group_by(name) %>%
+  median_qi(.width = c(.8, .95)) %>%
+  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = mean_intercept - sd_control,
+            xmax = mean_intercept + sd_control,
+            ymin = 0, ymax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
+```
+
+```{r}
+# z-score values
+mean_age = mean(naccmoca$age)
+sd_age = sd(naccmoca$age)
+naccmoca$age <- (naccmoca$age - mean_age) / sd_age
+
+mean_naccmoca = mean(naccmoca$naccmoca)
+sd_naccmoca = sd(naccmoca$naccmoca)
+naccmoca$naccmoca <- (naccmoca$naccmoca - mean_naccmoca) / sd_naccmoca
+
+mean_mean = mean(naccmoca$mean)
+sd_mean = sd(naccmoca$mean)
+naccmoca$mean <- (naccmoca$mean - mean_mean) / sd_mean
+
+
+# set priors
+mmse_priors = c(set_prior("cauchy(0,1)", class = "b", coef = "age"),
+                set_prior("cauchy(0,1)", class = "b", coef = "adlikePositive"),
+                set_prior("cauchy(0,1)", class = "b", coef = "mean"),
+                set_prior("cauchy(0,1)", class = "b", coef = "mean:adlikePositive"))
+
+fit_mmse <- brm(naccmoca ~ mean * adlike + age,
+                data = naccmoca,
+                prior = mmse_priors,
+                family = "skew_normal",
+                iter = 5000,
+                chains = 4,
+                seed = 5)
+
+fit_mmse_summary <- summary(fit_mmse)
+fit_mmse_summary
+```
+
+
+```{r}
+# Plot posteriors
+fit_mmse %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = fit_mmse_summary$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = fit_mmse_summary$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+
+
+```
+
+```{r}
+posterior_plot <- mcmc_areas(posterior,
+                  pars = get_variables(fit_mmse)[grepl("b_mean:", get_variables(fit_mmse))])
+plot(fit_mmse)
+print(posterior_plot)
+
 ```
 
 # Digit span forward
