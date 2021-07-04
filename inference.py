@@ -18,7 +18,7 @@ def enable_dropout(m):
             each_module.train()
 
 
-def mc_passes(model, loader, n_passes: int, device: str) -> Tuple[tuple, np.ndarray, np.ndarray]:
+def mc_passes(model, loader, n_passes: int, device: str, single_batch: bool = False) -> Tuple[list, np.ndarray, np.ndarray]:
     mean_predictions = []
     std_predictions = []
     id_predictions = []
@@ -41,6 +41,9 @@ def mc_passes(model, loader, n_passes: int, device: str) -> Tuple[tuple, np.ndar
             id_batch = id_batch.cpu().numpy()
 
         id_predictions.append(id_batch)
+
+        if single_batch:
+            break
 
     return np.hstack(id_predictions).tolist(), np.hstack(mean_predictions), np.hstack(std_predictions)
 
@@ -78,6 +81,7 @@ def run_inference(dataset_location: str, dataset_id: str, single_pass: bool, dev
 
     ret_df.to_csv(f'results/latest_output_{dataset_id}_{num_samples}.csv')
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='ADNI Phenotypes')
     parser.add_argument('--dataset_location',
@@ -103,6 +107,7 @@ def parse_args():
                         help='Which GPU device to use.')
 
     return parser.parse_args()
+
 
 if __name__ == '__main__':
     args = parse_args()
