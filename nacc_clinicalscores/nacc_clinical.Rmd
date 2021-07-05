@@ -288,6 +288,12 @@ print(posterior_plot)
 
 ```
 
+## piecewise linear regression model
+
+```{r}
+pw_form <- bf(nacmmse ~  intercept + mean_slope * mean * step(change - mean) * adlike * age)
+
+```
 
 # MOCA
 
