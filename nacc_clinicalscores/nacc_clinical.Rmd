@@ -238,6 +238,9 @@ mean_mean = mean(naccmmse$mean)
 sd_mean = sd(naccmmse$mean)
 naccmmse$mean <- (naccmmse$mean - mean_mean) / sd_mean
 
+```
+
+```{r}
 
 # set priors
 mmse_priors = c(set_prior("cauchy(0,1)", class = "b", coef = "age"),
@@ -291,7 +294,27 @@ print(posterior_plot)
 ## piecewise linear regression model
 
 ```{r}
-pw_form <- bf(nacmmse ~  intercept + mean_slope * mean * step(change - mean) * adlike * age)
+# set priors
+mmse_priors = c(set_prior("cauchy(0,1)", class = "b", coef = "age"),
+                set_prior("cauchy(0,1)", class = "b", coef = "mean"))
+
+mod <- lm(nacmmse ~  mean * (mean<0.) + mean * (mean>0.),
+          data = naccmmse)
+
+bform <- bf(nacmmse ~ (mean + age) * inv_logit_scaled((mean + age) * 5)
+            + inv_logit_scaled((mean + age) * 5))
+
+fit_bkpt <- brm(bform,
+                data = naccmmse,
+                prior = mmse_priors,
+                family = "skew_normal",
+                iter = 5000,
+                warmup = 1000,
+                chains = 4,
+                seed = 5)
+
+fit_bkpt <- summary(fit_mmse)
+fit_bkpt
 
 ```
 
