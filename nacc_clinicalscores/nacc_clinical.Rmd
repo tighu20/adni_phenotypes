@@ -16,6 +16,7 @@ library(tidybayes)
 library(xtable)
 library(janitor)
 library(tidyr)
+library(rstan)
 
 options(mc.cores = parallel::detectCores())
 set.seed(5)
@@ -121,6 +122,8 @@ results <- results %>%
 First we'll plot MMSE against the mean
 
 ```{r}
+clinscore_name = "MMSE"
+
 naccmmse <- results %>%
   filter(!is.na(nacmmse))
 
@@ -155,7 +158,9 @@ print(p)
 
 ```{r}
 p_mmse <- ggplot(naccmmse, aes(x = mean, y = nacmmse, group = adlike, colour = adlike))
-p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm)
+p_mmse <- p_mmse + geom_point() + geom_smooth(method = lm) +
+  labs(x = "AD score",
+       y = clinscore_name)
 print(p_mmse)
 ```
 
@@ -281,41 +286,84 @@ fit_mmse %>%
 
 ```
 
-```{r}
-posterior_plot <- mcmc_areas(posterior,
-                  pars = get_variables(fit_mmse)[grepl("b_mean:", get_variables(fit_mmse))])
-plot(fit_mmse)
-print(posterior_plot)
-
-
-
-```
 
 ## piecewise linear regression model
 
 ```{r}
-# set priors
-mmse_priors = c(set_prior("cauchy(0,1)", class = "b", coef = "age"),
-                set_prior("cauchy(0,1)", class = "b", coef = "mean"))
+model_bp <- '
+data {
+ int<lower=1> N ;
+ real clinscore[N] ;
+ real adlike[N] ;
+}
 
-mod <- lm(nacmmse ~  mean * (mean<0.) + mean * (mean>0.),
-          data = naccmmse)
+parameters {
+ real intercept ;
+ real slope_before ;
+ real slope_after ;
+ real<lower = 0.25, upper = .75> bp ;
+ real<lower=0> error ;
+}
 
-bform <- bf(nacmmse ~ (mean + age) * inv_logit_scaled((mean + age) * 5)
-            + inv_logit_scaled((mean + age) * 5))
+transformed parameters {
+ vector[N] conditional_adlike ;
+ real slope_difference ;
+ slope_difference = slope_after - slope_before ;
+ for (i in 1:N) {
+  if (adlike[i] < bp) {
+   conditional_adlike[i] = intercept + slope_before * (adlike[i] - bp) ;
+  } else {
+   conditional_adlike[i] = intercept + slope_after * (adlike[i] - bp) ;
+  }
+ }
+}
 
-fit_bkpt <- brm(bform,
-                data = naccmmse,
-                prior = mmse_priors,
-                family = "skew_normal",
-                iter = 5000,
-                warmup = 1000,
-                chains = 4,
-                seed = 5)
+model {
+ //set priors
+ intercept ~ cauchy(0, 10) ;
+ slope_before ~ cauchy(0, 10) ;
+ slope_after ~ cauchy(0, 10) ;
+ bp ~ normal(0.5, 1) ;
+ error ~ cauchy(0, 10) ;
+ for (i in 1:N) {
+  clinscore[i] ~ normal(conditional_adlike[i], error) ;
+ }
+}
 
-fit_bkpt <- summary(fit_mmse)
-fit_bkpt
+generated quantities {
+ vector[N] sim_clinscore ;
+ vector[N] log_lik ;
+ vector[25] sim_conditional_mean ;
+ 
+ for (i in 1:25) {
+  if ((i * 0.02) + 0.25 < bp) {
+   sim_conditional_mean[i] = intercept + slope_before * (i - bp) ;
+  } else {
+   sim_conditional_mean[i] = intercept + slope_after * (i - bp) ;
+  }
+ }
+ for (i in 1:N) {
+  sim_clinscore[i] = normal_rng(conditional_adlike[i], error) ;
+  log_lik[i] = normal_lpdf(clinscore[i] | conditional_adlike[i], error) ;
+ }
+}
+'
+```
 
+```{r}
+data_list <- list(
+  N = nrow(naccmmse),
+  clinscore = naccmmse$nacmmse,
+  adlike = naccmmse$mean
+)
+
+fit_bp <- stan(model_code = model_bp,
+               data = data_list)
+```
+
+```{r}
+print(fit_bp,
+      par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
 ```
 
 # MOCA
