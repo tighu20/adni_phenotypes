@@ -366,6 +366,75 @@ print(fit_bp,
       par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
 ```
 
+# Fixed breakpoint
+
+```{r}
+model_bp_fixed <- '
+data {
+ int<lower=1> N ;
+ real clinscore[N] ;
+ real adlike[N] ;
+}
+
+parameters {
+ real intercept ;
+ real slope_before ;
+ real slope_after ;
+ real<lower=0> error ;
+}
+
+transformed parameters {
+ vector[N] conditional_adlike ;
+ real slope_difference ;
+ slope_difference = slope_after - slope_before ;
+ for (i in 1:N) {
+  if (adlike[i] < 0.5) {
+   conditional_adlike[i] = intercept + slope_before * (adlike[i] - 0.5) ;
+  } else {
+   conditional_adlike[i] = intercept + slope_after * (adlike[i] - 0.5) ;
+  }
+ }
+}
+
+model {
+ //set priors
+ intercept ~ cauchy(0, 10) ;
+ slope_before ~ cauchy(0, 10) ;
+ slope_after ~ cauchy(0, 10) ;
+ error ~ cauchy(0, 10) ;
+ for (i in 1:N) {
+  clinscore[i] ~ normal(conditional_adlike[i], error) ;
+ }
+}
+
+generated quantities {
+ vector[N] sim_clinscore ;
+ vector[N] log_lik ;
+ 
+ for (i in 1:N) {
+  sim_clinscore[i] = normal_rng(conditional_adlike[i], error) ;
+  log_lik[i] = normal_lpdf(clinscore[i] | conditional_adlike[i], error) ;
+ }
+}
+'
+```
+
+```{r}
+data_list <- list(
+  N = nrow(naccmmse),
+  clinscore = naccmmse$nacmmse,
+  adlike = naccmmse$mean
+)
+
+fit_bp_fixed <- stan(model_code = model_bp_fixed,
+                     data = data_list)
+```
+
+```{r}
+print(fit_bp_fixed,
+      par = c("intercept", "slope_before", "slope_after", "slope_difference", "error"))
+```
+
 # MOCA
 
 ```{r}
