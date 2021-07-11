@@ -29,8 +29,9 @@ def plot_mean_std(joined_df: pd.DataFrame, diagnosis_arr: list, save_fig: Union[
         plt.scatter(tmp_df['std'], tmp_df['mean'], label=diagnosis, s=6)
 
     plt.legend()
-    plt.xlabel('Standard Deviation')
-    plt.ylabel('Mean')
+    plt.xlabel('Standard Deviation', fontsize=15)
+    plt.ylabel('Mean', fontsize=15)
+    
     if save_fig is not None:
         plt.tight_layout()
         plt.savefig(save_fig)
