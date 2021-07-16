@@ -16,6 +16,9 @@ library(rstan)
 library(multcomp)
 library(coda)
 library(tidybayes)
+
+options(mc.cores = parallel::detectCores())
+set.seed(5)
 ```
 
 ```{r}
@@ -72,8 +75,8 @@ adnidata %>%
              y = mean,
              fill = adlike,
              colour = adlike)) +
-  geom_point(aes(shape = DX_bl),
-             position = position_dodge2(width = 0.2)) +
+  geom_point(aes(shape = DX_bl)) +
+             # position = position_dodge2(width = 0.2)) +
   geom_smooth(method = "lm",
               colour = "blue")
 
@@ -83,9 +86,11 @@ adnidata %>%
 
 # MMSE
 ```{r}
+clinscore = "MMSE"
+clinscore_name = "MMSE"
 adnidata %>%
   filter(!is.na(MMSE)) %>%
-  group_by(DX_bl) %>%
+  group_by(adlike) %>%
   summarise(n = n(),
             .groups = "drop")
 ```
@@ -100,8 +105,8 @@ adnidata %>%
              y = mean,
              fill = DX_bl,
              colour = DX_bl)) +
-  geom_point(aes(shape = adlike),
-             position = position_dodge2(width = 0.2)) +
+  geom_point(aes(shape = adlike)) +
+             #position = position_dodge2(width = 0.2)) +
   geom_smooth(method = "lm",
               colour = "blue")
 
@@ -111,14 +116,15 @@ adnidata %>%
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(cauchy(23, 10), class = "Intercept"),
+priors <- c(prior(cauchy(28, 10), class = "Intercept"),
             prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
-cog_brms <- brm(MMSE ~ adlike,
+cog_brms <- brm(MMSE ~ adlike + AGE,
                 data = adnidata, 
                 iter = 5000, warmup = 1000, chains = 4, 
-                prior = priors)
+                prior = priors,
+                family = "skew_normal")
 
 summary(cog_brms)
 
@@ -179,7 +185,7 @@ clinscore = "MOCA"
 clinscore_name = "MoCA"
 adnidata %>%
   filter(!is.na(MOCA)) %>%
-  group_by(DX_bl) %>%
+  group_by(adlike) %>%
   summarise(n = length(subj))
 ```
 
@@ -190,8 +196,8 @@ adnidata %>%
              y = mean,
              fill = DX_bl,
              colour = DX_bl)) +
-  geom_point(aes(shape = adlike),
-             position = position_dodge2(width = 0.2)) +
+  geom_point(aes(shape = adlike)) +
+             # position = position_dodge2(width = 0.2)) +
   geom_smooth(method = "lm",
               colour = "blue")
 
@@ -200,11 +206,11 @@ adnidata %>%
 
 ```{r}
 # Bayesian analysis
-priors <- c(prior(cauchy(23, 10), class = "Intercept"),
+priors <- c(prior(cauchy(25, 10), class = "Intercept"),
             prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
-cog_brms <- brm(MOCA ~ adlike,
+cog_brms <- brm(MOCA ~ adlike + AGE,
                 data = adnidata, 
                 iter = 5000, warmup = 1000, chains = 4, 
                 prior = priors)
@@ -265,9 +271,11 @@ cog_brms_draws %>%
 
 ## Immediate
 ```{r}
+clinscore = "RAVLT_immediate"
+clinscore_name = "RAVLT immediate recall"
 adnidata %>%
   filter(!is.na(RAVLT_immediate)) %>%
-  group_by(DX_bl) %>%
+  group_by(adlike) %>%
   summarise(n = length(subj))
 ```
 
@@ -278,8 +286,8 @@ adnidata %>%
              y = mean,
              fill = DX_bl,
              colour = DX_bl)) +
-  geom_point(aes(shape = adlike),
-             position = position_dodge2(width = 0.2)) +
+  geom_point(aes(shape = adlike)) +
+             #position = position_dodge2(width = 0.2)) +
   geom_smooth(method = "lm",
               colour = "blue")
 
@@ -292,7 +300,7 @@ priors <- c(prior(cauchy(23, 10), class = "Intercept"),
             prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
-cog_brms <- brm(RAVLT_immediate ~ adlike,
+cog_brms <- brm(RAVLT_immediate ~ adlike + AGE,
                 data = adnidata, 
                 iter = 5000, warmup = 1000, chains = 4, 
                 prior = priors)
@@ -351,9 +359,11 @@ cog_brms_draws %>%
 
 ## percent forgetting
 ```{r}
+clinscore = "RAVLT_perc_forgetting"
+clinscore_name = "RAVLT percent forgetting"
 adnidata %>%
   filter(!is.na(RAVLT_perc_forgetting)) %>%
-  group_by(DX_bl) %>%
+  group_by(adlike) %>%
   summarise(n = length(subj))
 ```
 
@@ -364,8 +374,8 @@ adnidata %>%
              y = mean,
              fill = DX_bl,
              colour = DX_bl)) +
-  geom_point(aes(shape = adlike),
-             position = position_dodge2(width = 0.2)) +
+  geom_point(aes(shape = adlike)) +
+             # position = position_dodge2(width = 0.2)) +
   geom_smooth(method = "lm",
               colour = "blue")
 
@@ -378,7 +388,186 @@ priors <- c(prior(cauchy(23, 10), class = "Intercept"),
             prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
-cog_brms <- brm(RAVLT_perc_forgetting ~ adlike,
+cog_brms <- brm(RAVLT_perc_forgetting ~ adlike + AGE,
+                data = adnidata, 
+                iter = 5000, warmup = 1000, chains = 4, 
+                prior = priors,
+                family = "skew_normal")
+
+summary(cog_brms)
+
+```
+
+```{r}
+summary_model <- summary(cog_brms)
+
+cog_brms %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = summary_model$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = summary_model$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+```
+
+```{r, fig.height=2.5, fig.width=6}
+cog_brms_draws <- cog_brms %>%
+  spread_draws(b_adlikePositive, b_Intercept)
+
+mean_intercept = mean(cog_brms_draws$b_Intercept)
+sd_control = sd(cog_brms_draws$b_Intercept) * 1
+
+cog_brms_draws %>%
+  dplyr::select(b_adlikePositive, b_Intercept) %>%
+  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
+  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+  group_by(name) %>%
+  median_qi(.width = c(.8, .95)) %>%
+  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = mean_intercept - sd_control,
+            xmax = mean_intercept + sd_control,
+            ymin = 0, ymax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
+```
+
+
+
+# CDR sum of boxes
+```{r}
+clinscore = "CDRSB"
+clinscore_name = "CDR sum of boxes"
+adnidata %>%
+  filter(!is.na(CDRSB)) %>%
+  group_by(adlike) %>%
+  summarise(n = length(subj))
+```
+
+```{r}
+adnidata %>% filter(!is.na(CDRSB)) %>%
+  ggplot(aes(x = CDRSB,
+             y = mean,
+             fill = DX_bl,
+             colour = DX_bl)) +
+  geom_point(aes(shape = adlike)) +
+             # position = position_dodge2(width = 0.2)) +
+  geom_smooth(method = "lm",
+              colour = "blue")
+
+
+```
+
+```{r}
+# Bayesian analysis
+priors <- c(prior(cauchy(1, 5), class = "Intercept"),
+            prior(cauchy(0, 10), class = "b"), 
+            prior(cauchy(0, 10), class = "sigma"))
+
+cog_brms <- brm(CDRSB ~ adlike + AGE,
+                data = adnidata, 
+                iter = 5000, warmup = 1000, chains = 4, 
+                prior = priors,
+                family = "skew_normal")
+
+summary(cog_brms)
+
+```
+
+```{r}
+summary_model <- summary(cog_brms)
+
+cog_brms %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = summary_model$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = summary_model$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+```
+
+```{r, fig.height=2.5, fig.width=6}
+cog_brms_draws <- cog_brms %>%
+  spread_draws(b_adlikePositive, b_Intercept)
+
+mean_intercept = mean(cog_brms_draws$b_Intercept)
+sd_control = sd(cog_brms_draws$b_Intercept) * 1
+
+cog_brms_draws %>%
+  dplyr::select(b_adlikePositive, b_Intercept) %>%
+  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
+  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+  group_by(name) %>%
+  median_qi(.width = c(.8, .95)) %>%
+  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = mean_intercept - sd_control,
+            xmax = mean_intercept + sd_control,
+            ymin = 0, ymax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
+```
+
+
+# Digit score
+```{r}
+clinscore = "DIGITSCOR"
+clinscore_name = "Digit symbol task"
+adnidata %>%
+  filter(!is.na(DIGITSCOR)) %>%
+  group_by(adlike) %>%
+  summarise(n = length(subj))
+```
+
+```{r}
+adnidata %>% filter(!is.na(DIGITSCOR)) %>%
+  ggplot(aes(x = DIGITSCOR,
+             y = mean,
+             fill = DX_bl,
+             colour = DX_bl)) +
+  geom_point(aes(shape = adlike)) +
+             # position = position_dodge2(width = 0.2)) +
+  geom_smooth(method = "lm",
+              colour = "blue")
+
+
+```
+
+```{r}
+# Bayesian analysis
+priors <- c(prior(cauchy(45, 10), class = "Intercept"),
+            prior(cauchy(0, 10), class = "b"), 
+            prior(cauchy(0, 10), class = "sigma"))
+
+cog_brms <- brm(DIGITSCOR ~ adlike + AGE,
                 data = adnidata, 
                 iter = 5000, warmup = 1000, chains = 4, 
                 prior = priors)
@@ -435,4 +624,176 @@ cog_brms_draws %>%
         axis.title.x = element_text(size = 15))
 ```
 
+# Delayed recall
+```{r}
+clinscore = "LDELTOTAL"
+clinscore_name = "Delayed recall"
+adnidata %>%
+  filter(!is.na(LDELTOTAL)) %>%
+  group_by(adlike) %>%
+  summarise(n = length(subj))
+```
 
+```{r}
+adnidata %>% filter(!is.na(LDELTOTAL)) %>%
+  ggplot(aes(x = LDELTOTAL,
+             y = mean,
+             fill = DX_bl,
+             colour = DX_bl)) +
+  geom_point(aes(shape = adlike)) +
+             # position = position_dodge2(width = 0.2)) +
+  geom_smooth(method = "lm",
+              colour = "blue")
+
+
+```
+
+```{r}
+# Bayesian analysis
+priors <- c(prior(cauchy(13, 5), class = "Intercept"),
+            prior(cauchy(0, 10), class = "b"), 
+            prior(cauchy(0, 10), class = "sigma"))
+
+cog_brms <- brm(LDELTOTAL ~ adlike + AGE,
+                data = adnidata, 
+                iter = 5000, warmup = 1000, chains = 4, 
+                prior = priors)
+
+summary(cog_brms)
+
+```
+
+```{r}
+summary_model <- summary(cog_brms)
+
+cog_brms %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = summary_model$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = summary_model$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+```
+
+```{r, fig.height=2.5, fig.width=6}
+cog_brms_draws <- cog_brms %>%
+  spread_draws(b_adlikePositive, b_Intercept)
+
+mean_intercept = mean(cog_brms_draws$b_Intercept)
+sd_control = sd(cog_brms_draws$b_Intercept) * 1
+
+cog_brms_draws %>%
+  dplyr::select(b_adlikePositive, b_Intercept) %>%
+  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
+  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+  group_by(name) %>%
+  median_qi(.width = c(.8, .95)) %>%
+  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = mean_intercept - sd_control,
+            xmax = mean_intercept + sd_control,
+            ymin = 0, ymax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
+```
+
+# Trails B 
+```{r}
+clinscore = "mPACCtrailsB"
+clinscore_name = "Trails B"
+adnidata %>%
+  filter(!is.na(mPACCtrailsB)) %>%
+  group_by(adlike) %>%
+  summarise(n = length(subj))
+```
+
+```{r}
+adnidata %>% filter(!is.na(mPACCtrailsB)) %>%
+  ggplot(aes(x = mPACCtrailsB,
+             y = mean,
+             fill = DX_bl,
+             colour = DX_bl)) +
+  geom_point(aes(shape = adlike)) +
+             # position = position_dodge2(width = 0.2)) +
+  geom_smooth(method = "lm",
+              colour = "blue")
+
+
+```
+
+```{r}
+# Bayesian analysis
+priors <- c(prior(cauchy(0, 10), class = "Intercept"),
+            prior(cauchy(0, 10), class = "b"), 
+            prior(cauchy(0, 10), class = "sigma"))
+
+cog_brms <- brm(mPACCtrailsB ~ adlike + AGE,
+                data = adnidata, 
+                iter = 5000, warmup = 1000, chains = 4, 
+                prior = priors)
+
+summary(cog_brms)
+
+```
+
+```{r}
+summary_model <- summary(cog_brms)
+
+cog_brms %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = summary_model$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = summary_model$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+```
+
+```{r, fig.height=2.5, fig.width=6}
+cog_brms_draws <- cog_brms %>%
+  spread_draws(b_adlikePositive, b_Intercept)
+
+mean_intercept = mean(cog_brms_draws$b_Intercept)
+sd_control = sd(cog_brms_draws$b_Intercept) * 1
+
+cog_brms_draws %>%
+  dplyr::select(b_adlikePositive, b_Intercept) %>%
+  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
+  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
+  group_by(name) %>%
+  median_qi(.width = c(.8, .95)) %>%
+  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
+  geom_rect(xmin = mean_intercept - sd_control,
+            xmax = mean_intercept + sd_control,
+            ymin = 0, ymax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
+  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
+  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
+```
