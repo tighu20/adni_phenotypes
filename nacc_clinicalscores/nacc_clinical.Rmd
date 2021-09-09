@@ -331,11 +331,53 @@ fit_bp <- stan(model_code = model_bp,
 outmat <- summary(fit_bp,
                   par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
+```
+
+
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+bp = outmat[["summary"]]["bp", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+d = bp
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = d, yend = b) +
+  geom_segment(x = d, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.4,
+            label = paste("Breakpoint:", round(bp, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
 ```
 
 # Fixed breakpoint
@@ -406,12 +448,46 @@ fit_bp_fixed <- stan(model_code = model_bp_fixed,
 outmat <- summary(fit_bp_fixed,
                   par = c("intercept", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = .5, yend = b) +
+  geom_segment(x = .5, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
+```
+
 
 ```{r}
 model_bp_linear <- '
@@ -706,11 +782,51 @@ fit_bp <- stan(model_code = model_bp,
 outmat <- summary(fit_bp,
                   par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
+```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+bp = outmat[["summary"]]["bp", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+d = bp
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = d, yend = b) +
+  geom_segment(x = d, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.4,
+            label = paste("Breakpoint:", round(bp, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
 ```
 
 # Fixed breakpoint
@@ -781,11 +897,44 @@ fit_bp_fixed <- stan(model_code = model_bp_fixed,
 outmat <- summary(fit_bp_fixed,
                   par = c("intercept", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
+```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = .5, yend = b) +
+  geom_segment(x = .5, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
 ```
 
 ```{r}
@@ -846,11 +995,11 @@ fit_bp_linear <- stan(model_code = model_bp_linear,
 outmat <- summary(fit_bp_linear,
                   par = c("intercept", "slope", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
 
 ```{r}
@@ -1089,11 +1238,51 @@ fit_bp <- stan(model_code = model_bp,
 outmat <- summary(fit_bp,
                   par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
+```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+bp = outmat[["summary"]]["bp", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+d = bp
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = d, yend = b) +
+  geom_segment(x = d, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.4,
+            label = paste("Breakpoint:", round(bp, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
 ```
 
 # Fixed breakpoint
@@ -1164,12 +1353,47 @@ fit_bp_fixed <- stan(model_code = model_bp_fixed,
 outmat <- summary(fit_bp_fixed,
                   par = c("intercept", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = .5, yend = b) +
+  geom_segment(x = .5, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
+```
+
+
 ```{r}
 model_bp_linear <- '
 data {
@@ -1228,11 +1452,11 @@ fit_bp_linear <- stan(model_code = model_bp_linear,
 outmat <- summary(fit_bp_linear,
                   par = c("intercept", "slope", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
 
 ```{r}
@@ -1470,11 +1694,51 @@ fit_bp <- stan(model_code = model_bp,
 outmat <- summary(fit_bp,
                   par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
+```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+bp = outmat[["summary"]]["bp", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+d = bp
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = d, yend = b) +
+  geom_segment(x = d, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.4,
+            label = paste("Breakpoint:", round(bp, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
 ```
 
 # Fixed breakpoint
@@ -1545,12 +1809,46 @@ fit_bp_fixed <- stan(model_code = model_bp_fixed,
 outmat <- summary(fit_bp_fixed,
                   par = c("intercept", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = .5, yend = b) +
+  geom_segment(x = .5, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
+```
+
 ```{r}
 model_bp_linear <- '
 data {
@@ -1609,11 +1907,11 @@ fit_bp_linear <- stan(model_code = model_bp_linear,
 outmat <- summary(fit_bp_linear,
                   par = c("intercept", "slope", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
 
 ```{r}
@@ -1851,11 +2149,51 @@ fit_bp <- stan(model_code = model_bp,
 outmat <- summary(fit_bp,
                   par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
+```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+bp = outmat[["summary"]]["bp", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+d = bp
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = d, yend = b) +
+  geom_segment(x = d, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.4,
+            label = paste("Breakpoint:", round(bp, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
 ```
 
 # Fixed breakpoint
@@ -1926,12 +2264,46 @@ fit_bp_fixed <- stan(model_code = model_bp_fixed,
 outmat <- summary(fit_bp_fixed,
                   par = c("intercept", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = .5, yend = b) +
+  geom_segment(x = .5, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
+```
+
 ```{r}
 model_bp_linear <- '
 data {
@@ -1990,11 +2362,11 @@ fit_bp_linear <- stan(model_code = model_bp_linear,
 outmat <- summary(fit_bp_linear,
                   par = c("intercept", "slope", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
 
 ```{r}
@@ -2233,11 +2605,51 @@ fit_bp <- stan(model_code = model_bp,
 outmat <- summary(fit_bp,
                   par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
+```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+bp = outmat[["summary"]]["bp", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+d = bp
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(a * 1.2, c * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = d, yend = b) +
+  geom_segment(x = d, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Breakpoint:", round(bp, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.4,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
 ```
 
 # Fixed breakpoint
@@ -2308,12 +2720,46 @@ fit_bp_fixed <- stan(model_code = model_bp_fixed,
 outmat <- summary(fit_bp_fixed,
                   par = c("intercept", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(a * 1.2, c * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = .5, yend = b) +
+  geom_segment(x = .5, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
+```
+
 ```{r}
 model_bp_linear <- '
 data {
@@ -2372,11 +2818,11 @@ fit_bp_linear <- stan(model_code = model_bp_linear,
 outmat <- summary(fit_bp_linear,
                   par = c("intercept", "slope", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
 
 ```{r}
@@ -2614,11 +3060,51 @@ fit_bp <- stan(model_code = model_bp,
 outmat <- summary(fit_bp,
                   par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
+```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+bp = outmat[["summary"]]["bp", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+d = bp
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = d, yend = b) +
+  geom_segment(x = d, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.4,
+            label = paste("Breakpoint:", round(bp, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
 ```
 
 # Fixed breakpoint
@@ -2689,12 +3175,46 @@ fit_bp_fixed <- stan(model_code = model_bp_fixed,
 outmat <- summary(fit_bp_fixed,
                   par = c("intercept", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = .5, yend = b) +
+  geom_segment(x = .5, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
+```
+
 ```{r}
 model_bp_linear <- '
 data {
@@ -2753,11 +3273,11 @@ fit_bp_linear <- stan(model_code = model_bp_linear,
 outmat <- summary(fit_bp_linear,
                   par = c("intercept", "slope", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 ```
 
 ```{r}
@@ -2995,11 +3515,51 @@ fit_bp <- stan(model_code = model_bp,
 outmat <- summary(fit_bp,
                   par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
+```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+bp = outmat[["summary"]]["bp", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+d = bp
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = d, yend = b) +
+  geom_segment(x = d, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.4,
+            label = paste("Breakpoint:", round(bp, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
 ```
 
 # Fixed breakpoint
@@ -3070,11 +3630,44 @@ fit_bp_fixed <- stan(model_code = model_bp_fixed,
 outmat <- summary(fit_bp_fixed,
                   par = c("intercept", "slope_before", "slope_after", "slope_difference", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
+```
+
+```{r}
+slope_before = outmat[["summary"]]["slope_before", "mean"]
+slope_after = outmat[["summary"]]["slope_after", "mean"]
+intercept = outmat[["summary"]]["intercept", "mean"]
+
+a = intercept
+b = intercept + (0.5 * slope_before)
+c = intercept + slope_after
+
+df_blank = data.frame(x = c(-.5), y = c(0))
+p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c * 1.2, a * 1.2) +
+  geom_segment(x = 0, y = a,
+               xend = .5, yend = b) +
+  geom_segment(x = .5, y = b,
+               xend = 1., yend = c) +
+  labs(x = "AD score",
+       y = clinscore_name) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.25,
+            label = paste("Slope before:", round(slope_before, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  geom_text(x = 0.,
+            y = (c * 1.2) + ((a * 1.2) - (c * 1.2)) * 0.1,
+            label = paste("Slope after:", round(slope_after, digits = 2)),
+            hjust = "left",
+            size = 8) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+
+print(p)
 ```
 
 ```{r}
@@ -3135,11 +3728,11 @@ fit_bp_linear <- stan(model_code = model_bp_linear,
 outmat <- summary(fit_bp_linear,
                   par = c("intercept", "slope", "error"))
 
-outmat <- xtable(outmat$summary,
+outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
                  digits = c(0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2))
 
-print(outmat)
+print(outmat_summary)
 
 ```
 
