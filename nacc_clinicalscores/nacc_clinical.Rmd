@@ -17,7 +17,6 @@ library(xtable)
 library(janitor)
 library(tidyr)
 library(rstan)
-library(loo)
 
 options(mc.cores = parallel::detectCores())
 set.seed(5)
@@ -123,33 +122,28 @@ results <- results %>%
 First we'll plot MMSE against the mean
 
 ```{r}
-clinscore = "nacmmse"
 clinscore_name = "MMSE"
 
-data_clinscore <- results %>%
-  rename(clinscore = !!clinscore) %>%
-  filter(!is.na(clinscore))
+naccmmse <- results %>%
+  filter(!is.na(nacmmse))
 
-data_clinscore_summary <- data_clinscore %>%
+naccmmse_summary <- naccmmse %>%
   group_by(adlike) %>%
   summarise(n = length(subj),
-            clinscore = paste(round(mean(clinscore), digits = 1),
-                         " (", round(sd(clinscore), digits = 1), ")",
+            mmse = paste(round(mean(nacmmse), digits = 1),
+                         " (", round(sd(nacmmse), digits = 1), ")",
                          sep = ""),
             age = round(mean(age, na.rm = TRUE), digits = 1),
             sex = paste(length(gender[gender == "Female"]),
                         length(gender[gender == "Male"]),
                         sep = "/"))
 
-datatable(data_clinscore_summary)
-data_clinscore_summary_table <- xtable(data_clinscore_summary)
-print(data_clinscore_summary_table,
-      include.rownames = FALSE)
+datatable(naccmmse_summary)
 ```
 
 ```{r}
-p <- ggplot(data_clinscore,
-            aes(y = clinscore,
+p <- ggplot(naccmmse,
+            aes(y = nacmmse,
                 x = adlike,
                 fill = adlike)) +
   geom_boxplot() +
@@ -164,10 +158,11 @@ print(p)
 
 
 ```{r}
-p_clinscore <- ggplot(data_clinscore, aes(x = mean, y = clinscore, group = adlike, colour = adlike))
+p_clinscore <- ggplot(naccmmse, aes(x = mean, y = nacmmse, group = adlike, colour = adlike))
 p_clinscore <- p_clinscore + geom_point() + geom_smooth(method = lm) +
   labs(x = "AD score",
-       y = clinscore_name)
+       y = clinscore_name) +
+  theme(legend.position = "None")
 print(p_clinscore)
 ```
 
@@ -177,8 +172,8 @@ priors <- c(prior(cauchy(10, 10), class = "Intercept"),
             prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
-cog_brms <- brm(clinscore ~ adlike + age, 
-                data = data_clinscore, 
+cog_brms <- brm(nacmmse ~ adlike + age, 
+                data = naccmmse, 
                 iter = 5000, warmup = 1000, chains = 4, 
                 prior = priors)
 
@@ -212,7 +207,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(data_clinscore[data_clinscore$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
+sd_control = sd(naccmmse[naccmmse$adlike == "Negative", "nacmmse"][["nacmmse"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -238,17 +233,58 @@ cog_brms_draws %>%
 
 ```{r}
 # z-score values
-mean_age = mean(data_clinscore$age)
-sd_age = sd(data_clinscore$age)
-data_clinscore$age <- (data_clinscore$age - mean_age) / sd_age
+mean_age = mean(naccmmse$age)
+sd_age = sd(naccmmse$age)
+naccmmse$age <- (naccmmse$age - mean_age) / sd_age
 
-mean_clinscore = mean(data_clinscore$clinscore)
-sd_clinscore = sd(data_clinscore$clinscore)
-data_clinscore$clinscore <- (data_clinscore$clinscore - mean_clinscore) / sd_clinscore
+mean_nacmmse = mean(naccmmse$nacmmse)
+sd_nacmmse = sd(naccmmse$nacmmse)
+naccmmse$nacmmse <- (naccmmse$nacmmse - mean_nacmmse) / sd_nacmmse
 
-mean_mean = mean(data_clinscore$mean)
-sd_mean = sd(data_clinscore$mean)
-data_clinscore$mean <- (data_clinscore$mean - mean_mean) / sd_mean
+mean_mean = mean(naccmmse$mean)
+sd_mean = sd(naccmmse$mean)
+naccmmse$mean <- (naccmmse$mean - mean_mean) / sd_mean
+
+```
+
+```{r}
+
+# set priors
+mmse_priors = c(set_prior("cauchy(0,1)", class = "b", coef = "age"),
+                set_prior("cauchy(0,1)", class = "b", coef = "adlikePositive"),
+                set_prior("cauchy(0,1)", class = "b", coef = "mean"),
+                set_prior("cauchy(0,1)", class = "b", coef = "mean:adlikePositive"))
+
+fit_mmse <- brm(nacmmse ~ mean * adlike + age,
+                data = naccmmse,
+                prior = mmse_priors,
+                family = "skew_normal",
+                iter = 5000,
+                chains = 4,
+                seed = 5)
+
+fit_mmse_summary <- summary(fit_mmse)
+fit_mmse_summary
+```
+
+
+```{r}
+# Plot posteriors
+fit_mmse %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = fit_mmse_summary$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = fit_mmse_summary$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
+
+
 
 ```
 
@@ -318,9 +354,9 @@ generated quantities {
 
 ```{r}
 data_list <- list(
-  N = nrow(data_clinscore),
-  clinscore = data_clinscore$clinscore,
-  adlike = data_clinscore$mean
+  N = nrow(naccmmse),
+  clinscore = naccmmse$nacmmse,
+  adlike = naccmmse$mean
 )
 
 fit_bp <- stan(model_code = model_bp,
@@ -435,9 +471,9 @@ generated quantities {
 
 ```{r}
 data_list <- list(
-  N = nrow(data_clinscore),
-  clinscore = data_clinscore$clinscore,
-  adlike = data_clinscore$mean
+  N = nrow(naccmmse),
+  clinscore = naccmmse$nacmmse,
+  adlike = naccmmse$mean
 )
 
 fit_bp_fixed <- stan(model_code = model_bp_fixed,
@@ -577,30 +613,25 @@ loo_compare(loo_fixed,
 clinscore = "naccmoca"
 clinscore_name = "MoCA"
 
-data_clinscore <- results %>%
-  rename(clinscore = !!clinscore) %>%
-  filter(!is.na(clinscore))
+naccmoca <- results %>%
+  filter(!is.na(naccmoca))
 
-data_clinscore_summary <- data_clinscore %>%
+naccmoca_summary <- naccmoca %>%
   group_by(adlike) %>%
   summarise(n = length(subj),
-            clinscore = paste(round(mean(clinscore), digits = 1),
-                         " (", round(sd(clinscore), digits = 1), ")",
+            moca = paste(round(mean(naccmoca), digits = 1),
+                         " (", round(sd(naccmoca), digits = 1), ")",
                          sep = ""),
             age = round(mean(age, na.rm = TRUE), digits = 1),
             sex = paste(length(gender[gender == "Female"]),
                         length(gender[gender == "Male"]),
                         sep = "/"))
 
-datatable(data_clinscore_summary)
-data_clinscore_summary_table <- xtable(data_clinscore_summary)
-print(data_clinscore_summary_table,
-      include.rownames = FALSE)
+datatable(naccmoca_summary)
 ```
-
 ```{r}
-p <- ggplot(data_clinscore,
-            aes(y = clinscore,
+p <- ggplot(naccmoca,
+            aes(y = naccmoca,
                 x = adlike,
                 fill = adlike)) +
   geom_boxplot() +
@@ -615,10 +646,8 @@ print(p)
 
 
 ```{r}
-p_clinscore <- ggplot(data_clinscore, aes(x = mean, y = clinscore, group = adlike, colour = adlike))
-p_clinscore <- p_clinscore + geom_point() + geom_smooth(method = lm) +
-  labs(x = "AD score",
-       y = clinscore_name)
+p_clinscore <- ggplot(naccmoca, aes(x = mean, y = naccmoca, group = adlike, colour = adlike))
+p_clinscore <- p_clinscore + geom_point() + geom_smooth(method = lm)
 print(p_clinscore)
 ```
 
@@ -628,8 +657,8 @@ priors <- c(prior(cauchy(10, 10), class = "Intercept"),
             prior(cauchy(0, 10), class = "b"), 
             prior(cauchy(0, 10), class = "sigma"))
 
-cog_brms <- brm(clinscore ~ adlike + age, 
-                data = data_clinscore, 
+cog_brms <- brm(naccmoca ~ adlike + age, 
+                data = naccmoca, 
                 iter = 5000, warmup = 1000, chains = 4, 
                 prior = priors)
 
@@ -663,7 +692,7 @@ cog_brms_draws <- cog_brms %>%
   spread_draws(b_adlikePositive, b_Intercept)
 
 mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(data_clinscore[data_clinscore$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
+sd_control = sd(naccmoca[naccmoca$adlike == "Negative", "naccmoca"][["naccmoca"]]) * 0.1
 
 cog_brms_draws %>%
   dplyr::select(b_adlikePositive, b_Intercept) %>%
@@ -689,98 +718,71 @@ cog_brms_draws %>%
 
 ```{r}
 # z-score values
-mean_age = mean(data_clinscore$age)
-sd_age = sd(data_clinscore$age)
-data_clinscore$age <- (data_clinscore$age - mean_age) / sd_age
+mean_age = mean(naccmoca$age)
+sd_age = sd(naccmoca$age)
+naccmoca$age <- (naccmoca$age - mean_age) / sd_age
 
-mean_clinscore = mean(data_clinscore$clinscore)
-sd_clinscore = sd(data_clinscore$clinscore)
-data_clinscore$clinscore <- (data_clinscore$clinscore - mean_clinscore) / sd_clinscore
+mean_naccmoca = mean(naccmoca$naccmoca)
+sd_naccmoca = sd(naccmoca$naccmoca)
+naccmoca$naccmoca <- (naccmoca$naccmoca - mean_naccmoca) / sd_naccmoca
 
-mean_mean = mean(data_clinscore$mean)
-sd_mean = sd(data_clinscore$mean)
-data_clinscore$mean <- (data_clinscore$mean - mean_mean) / sd_mean
+mean_mean = mean(naccmoca$mean)
+sd_mean = sd(naccmoca$mean)
+naccmoca$mean <- (naccmoca$mean - mean_mean) / sd_mean
 
+
+# set priors
+mmse_priors = c(set_prior("cauchy(0,1)", class = "b", coef = "age"),
+                set_prior("cauchy(0,1)", class = "b", coef = "adlikePositive"),
+                set_prior("cauchy(0,1)", class = "b", coef = "mean"),
+                set_prior("cauchy(0,1)", class = "b", coef = "mean:adlikePositive"))
+
+fit_mmse <- brm(naccmoca ~ mean * adlike + age,
+                data = naccmoca,
+                prior = mmse_priors,
+                family = "skew_normal",
+                iter = 5000,
+                chains = 4,
+                seed = 5)
+
+fit_mmse_summary <- summary(fit_mmse)
+fit_mmse_summary
 ```
 
 
-## piecewise linear regression model
-
 ```{r}
-model_bp <- '
-data {
- int<lower=1> N ;
- real clinscore[N] ;
- real adlike[N] ;
-}
+# Plot posteriors
+fit_mmse %>%
+  spread_draws(b_adlikePositive) %>%
+  ggplot(aes(x = b_adlikePositive)) +
+  geom_density() +
+  geom_vline(aes(xintercept = mean(b_adlikePositive)),
+             colour = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = fit_mmse_summary$fixed[2,3],
+             colour = "blue",
+             linetype = "dashed") + 
+  geom_vline(xintercept = fit_mmse_summary$fixed[2,4],
+             colour = "blue",
+             linetype = "dashed")
 
-parameters {
- real intercept ;
- real slope_before ;
- real slope_after ;
- real<lower = 0.25, upper = .75> bp ;
- real<lower=0> error ;
-}
 
-transformed parameters {
- vector[N] conditional_adlike ;
- real slope_difference ;
- slope_difference = slope_after - slope_before ;
- for (i in 1:N) {
-  if (adlike[i] < bp) {
-   conditional_adlike[i] = intercept + slope_before * (adlike[i] - bp) ;
-  } else {
-   conditional_adlike[i] = intercept + slope_after * (adlike[i] - bp) ;
-  }
- }
-}
 
-model {
- //set priors
- intercept ~ cauchy(0, 10) ;
- slope_before ~ cauchy(0, 10) ;
- slope_after ~ cauchy(0, 10) ;
- bp ~ normal(0.5, 1) ;
- error ~ cauchy(0, 10) ;
- for (i in 1:N) {
-  clinscore[i] ~ normal(conditional_adlike[i], error) ;
- }
-}
-
-generated quantities {
- vector[N] sim_clinscore ;
- vector[N] log_lik ;
- vector[25] sim_conditional_mean ;
- 
- for (i in 1:25) {
-  if ((i * 0.02) + 0.25 < bp) {
-   sim_conditional_mean[i] = intercept + slope_before * (i - bp) ;
-  } else {
-   sim_conditional_mean[i] = intercept + slope_after * (i - bp) ;
-  }
- }
- for (i in 1:N) {
-  sim_clinscore[i] = normal_rng(conditional_adlike[i], error) ;
-  log_lik[i] = normal_lpdf(clinscore[i] | conditional_adlike[i], error) ;
- }
-}
-'
 ```
 
 ```{r}
-data_list <- list(
-  N = nrow(data_clinscore),
-  clinscore = data_clinscore$clinscore,
-  adlike = data_clinscore$mean
-)
+posterior_plot <- mcmc_areas(posterior,
+                  pars = get_variables(fit_mmse)[grepl("b_mean:", get_variables(fit_mmse))])
+plot(fit_mmse)
+print(posterior_plot)
 
-fit_bp <- stan(model_code = model_bp,
-               data = data_list)
 ```
 
+# Digit span forward
+
 ```{r}
-outmat <- summary(fit_bp,
-                  par = c("intercept", "bp", "slope_before", "slope_after", "slope_difference", "error"))
+digif <- results %>%
+  filter(!is.na(digif))
 
 outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
@@ -829,73 +831,40 @@ p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c *
 print(p)
 ```
 
-# Fixed breakpoint
+```{r}
+p_clinscore <- ggplot(digif, aes(x = mean, y = digif, group = diagnosis, colour = diagnosis))
+p_clinscore <- p_clinscore + geom_point() + geom_smooth(method = lm)
+print(p_clinscore)
+```
+
+# Digit span backwards 
 
 ```{r}
-model_bp_fixed <- '
-data {
- int<lower=1> N ;
- real clinscore[N] ;
- real adlike[N] ;
-}
+digib <- results %>%
+  filter(!is.na(digib))
 
-parameters {
- real intercept ;
- real slope_before ;
- real slope_after ;
- real<lower=0> error ;
-}
+digib_summary <- digib %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = round(mean(age, na.rm = TRUE), digits = 1),
+            sex = paste(length(gender[gender == "Female"]),
+                        length(gender[gender == "Male"]),
+                        sep = "/"))
 
-transformed parameters {
- vector[N] conditional_adlike ;
- real slope_difference ;
- slope_difference = slope_after - slope_before ;
- for (i in 1:N) {
-  if (adlike[i] < 0.5) {
-   conditional_adlike[i] = intercept + slope_before * (adlike[i] - 0.5) ;
-  } else {
-   conditional_adlike[i] = intercept + slope_after * (adlike[i] - 0.5) ;
-  }
- }
-}
-
-model {
- //set priors
- intercept ~ cauchy(0, 10) ;
- slope_before ~ cauchy(0, 10) ;
- slope_after ~ cauchy(0, 10) ;
- error ~ cauchy(0, 10) ;
- for (i in 1:N) {
-  clinscore[i] ~ normal(conditional_adlike[i], error) ;
- }
-}
-
-generated quantities {
- vector[N] sim_clinscore ;
- vector[N] log_lik ;
- 
- for (i in 1:N) {
-  sim_clinscore[i] = normal_rng(conditional_adlike[i], error) ;
-  log_lik[i] = normal_lpdf(clinscore[i] | conditional_adlike[i], error) ;
- }
-}
-'
+datatable(digib_summary)
 ```
 
 ```{r}
-data_list <- list(
-  N = nrow(data_clinscore),
-  clinscore = data_clinscore$clinscore,
-  adlike = data_clinscore$mean
-)
-
-fit_bp_fixed <- stan(model_code = model_bp_fixed,
-                     data = data_list)
+p_clinscore <- ggplot(digib, aes(x = mean, y = digib, group = diagnosis, colour = diagnosis))
+p_clinscore <- p_clinscore + geom_point() + geom_smooth(method = lm)
+print(p_clinscore)
 ```
 
+# Animal fluency
+
 ```{r}
-outmat <- summary(fit_bp_fixed,
-                  par = c("intercept", "slope_before", "slope_after", "slope_difference", "error"))
+animals <- results %>%
+  filter(!is.na(animals))
 
 outmat_summary <- xtable(outmat$summary,
                  display = c("s", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "fg", "f", "f"),
@@ -938,25 +907,16 @@ print(p)
 ```
 
 ```{r}
-model_bp_linear <- '
-data {
- int<lower=1> N ;
- real clinscore[N] ;
- real adlike[N] ;
-}
+p_clinscore <- ggplot(animals, aes(x = mean, y = animals, group = diagnosis, colour = diagnosis))
+p_clinscore <- p_clinscore + geom_point() + geom_smooth(method = lm)
+print(p_clinscore)
+```
 
-parameters {
- real intercept ;
- real slope ;
- real<lower=0> error ;
-}
+# Trails B
 
-transformed parameters {
- vector[N] conditional_adlike ;
- for (i in 1:N) {
-  conditional_adlike[i] = intercept + slope * (adlike[i] - 0.5) ;
- }
-}
+```{r}
+trialsb <- results %>%
+  filter(!is.na(trialsb))
 
 model {
  //set priors
@@ -1040,198 +1000,35 @@ data_clinscore <- results %>%
 data_clinscore_summary <- data_clinscore %>%
   group_by(adlike) %>%
   summarise(n = length(subj),
-            clinscore = paste(round(mean(clinscore), digits = 1),
-                         " (", round(sd(clinscore), digits = 1), ")",
-                         sep = ""),
             age = round(mean(age, na.rm = TRUE), digits = 1),
             sex = paste(length(gender[gender == "Female"]),
                         length(gender[gender == "Male"]),
                         sep = "/"))
 
-datatable(data_clinscore_summary)
-data_clinscore_summary_table <- xtable(data_clinscore_summary)
-print(data_clinscore_summary_table,
-      include.rownames = FALSE)
+datatable(trialsb_summary)
 ```
 
 ```{r}
-p <- ggplot(data_clinscore,
-            aes(y = clinscore,
-                x = adlike,
-                fill = adlike)) +
-  geom_boxplot() +
-  labs(y = clinscore_name) +
-  theme(axis.title.x = element_blank(),
-        legend.position = "None",
-        axis.text = element_text(size = 20),
-        axis.title = element_text(size = 20))
-
-print(p)
-```
-
-
-```{r}
-p_clinscore <- ggplot(data_clinscore, aes(x = mean, y = clinscore, group = adlike, colour = adlike))
-p_clinscore <- p_clinscore + geom_point() + geom_smooth(method = lm) +
-  labs(x = "AD score",
-       y = clinscore_name)
+p_clinscore <- ggplot(trialsb, aes(x = mean, y = trialsb, group = diagnosis, colour = diagnosis))
+p_clinscore <- p_clinscore + geom_point() + geom_smooth(method = lm)
 print(p_clinscore)
 ```
 
-```{r}
-# Bayesian analysis
-priors <- c(prior(cauchy(10, 10), class = "Intercept"), 
-            prior(cauchy(0, 10), class = "b"), 
-            prior(cauchy(0, 10), class = "sigma"))
-
-cog_brms <- brm(clinscore ~ adlike + age, 
-                data = data_clinscore, 
-                iter = 5000, warmup = 1000, chains = 4, 
-                prior = priors)
-
-summary(cog_brms)
-
-
-```
-
+# WAIS
 
 ```{r}
-summary_model <- summary(cog_brms)
+wais <- results %>%
+  filter(!is.na(wais))
 
-cog_brms %>%
-  spread_draws(b_adlikePositive) %>%
-  ggplot(aes(x = b_adlikePositive)) +
-  geom_density() +
-  geom_vline(aes(xintercept = mean(b_adlikePositive)),
-             colour = "blue",
-             linetype = "dashed") +
-  geom_vline(xintercept = summary_model$fixed[2,3],
-             colour = "blue",
-             linetype = "dashed") + 
-  geom_vline(xintercept = summary_model$fixed[2,4],
-             colour = "blue",
-             linetype = "dashed")
+wais_summary <- wais %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = round(mean(age, na.rm = TRUE), digits = 1),
+            sex = paste(length(gender[gender == "Female"]),
+                        length(gender[gender == "Male"]),
+                        sep = "/"))
 
-```
-
-```{r, fig.height=2.5, fig.width=6}
-cog_brms_draws <- cog_brms %>%
-  spread_draws(b_adlikePositive, b_Intercept)
-
-mean_intercept = mean(cog_brms_draws$b_Intercept)
-sd_control = sd(data_clinscore[data_clinscore$adlike == "Negative", "clinscore"][["clinscore"]]) * 0.1
-
-cog_brms_draws %>%
-  dplyr::select(b_adlikePositive, b_Intercept) %>%
-  mutate(b_adlikePositive = mean_intercept + b_adlikePositive) %>%
-  pivot_longer(cols = c(b_adlikePositive, b_Intercept)) %>%
-  group_by(name) %>%
-  median_qi(.width = c(.8, .95)) %>%
-  ggplot(aes(y = name, x = value, xmin = .lower, xmax = .upper)) +
-  geom_rect(xmin = mean_intercept - sd_control,
-            xmax = mean_intercept + sd_control,
-            ymin = 0, ymax = 3,
-            fill = "cornsilk3") +
-  geom_pointinterval() +
-  geom_vline(xintercept = mean_intercept, linetype = "dashed", colour = "blue") +
-  geom_vline(xintercept = mean_intercept + sd_control, linetype = "dashed", colour = "blue") +
-  geom_vline(xintercept = mean_intercept - sd_control, linetype = "dashed", colour = "blue") +
-  scale_y_discrete(labels = c("AD-like positive", "AD-like negative")) +
-  labs(x = clinscore_name) +
-  theme(axis.title.y = element_blank(),
-        axis.text = element_text(size = 15),
-        axis.title.x = element_text(size = 15))
-```
-
-```{r}
-# z-score values
-mean_age = mean(data_clinscore$age)
-sd_age = sd(data_clinscore$age)
-data_clinscore$age <- (data_clinscore$age - mean_age) / sd_age
-
-mean_clinscore = mean(data_clinscore$clinscore)
-sd_clinscore = sd(data_clinscore$clinscore)
-data_clinscore$clinscore <- (data_clinscore$clinscore - mean_clinscore) / sd_clinscore
-
-mean_mean = mean(data_clinscore$mean)
-sd_mean = sd(data_clinscore$mean)
-data_clinscore$mean <- (data_clinscore$mean - mean_mean) / sd_mean
-
-```
-
-
-## piecewise linear regression model
-
-```{r}
-model_bp <- '
-data {
- int<lower=1> N ;
- real clinscore[N] ;
- real adlike[N] ;
-}
-
-parameters {
- real intercept ;
- real slope_before ;
- real slope_after ;
- real<lower = 0.25, upper = .75> bp ;
- real<lower=0> error ;
-}
-
-transformed parameters {
- vector[N] conditional_adlike ;
- real slope_difference ;
- slope_difference = slope_after - slope_before ;
- for (i in 1:N) {
-  if (adlike[i] < bp) {
-   conditional_adlike[i] = intercept + slope_before * (adlike[i] - bp) ;
-  } else {
-   conditional_adlike[i] = intercept + slope_after * (adlike[i] - bp) ;
-  }
- }
-}
-
-model {
- //set priors
- intercept ~ cauchy(0, 10) ;
- slope_before ~ cauchy(0, 10) ;
- slope_after ~ cauchy(0, 10) ;
- bp ~ normal(0.5, 1) ;
- error ~ cauchy(0, 10) ;
- for (i in 1:N) {
-  clinscore[i] ~ normal(conditional_adlike[i], error) ;
- }
-}
-
-generated quantities {
- vector[N] sim_clinscore ;
- vector[N] log_lik ;
- vector[25] sim_conditional_mean ;
- 
- for (i in 1:25) {
-  if ((i * 0.02) + 0.25 < bp) {
-   sim_conditional_mean[i] = intercept + slope_before * (i - bp) ;
-  } else {
-   sim_conditional_mean[i] = intercept + slope_after * (i - bp) ;
-  }
- }
- for (i in 1:N) {
-  sim_clinscore[i] = normal_rng(conditional_adlike[i], error) ;
-  log_lik[i] = normal_lpdf(clinscore[i] | conditional_adlike[i], error) ;
- }
-}
-'
-```
-
-```{r}
-data_list <- list(
-  N = nrow(data_clinscore),
-  clinscore = data_clinscore$clinscore,
-  adlike = data_clinscore$mean
-)
-
-fit_bp <- stan(model_code = model_bp,
-               data = data_list)
+datatable(wais_summary)
 ```
 
 ```{r}
@@ -1285,57 +1082,21 @@ p <- ggplot(df_blank, aes(x = x, y = y)) + geom_point() + xlim(0, 1.) + ylim(c *
 print(p)
 ```
 
-# Fixed breakpoint
+# Boston naming task
 
 ```{r}
-model_bp_fixed <- '
-data {
- int<lower=1> N ;
- real clinscore[N] ;
- real adlike[N] ;
-}
+boston <- results %>%
+  filter(!is.na(boston))
 
-parameters {
- real intercept ;
- real slope_before ;
- real slope_after ;
- real<lower=0> error ;
-}
+boston_summary <- boston %>%
+  group_by(diagnosis) %>%
+  summarise(n = length(subj),
+            age = round(mean(age, na.rm = TRUE), digits = 1),
+            sex = paste(length(gender[gender == "Female"]),
+                        length(gender[gender == "Male"]),
+                        sep = "/"))
 
-transformed parameters {
- vector[N] conditional_adlike ;
- real slope_difference ;
- slope_difference = slope_after - slope_before ;
- for (i in 1:N) {
-  if (adlike[i] < 0.5) {
-   conditional_adlike[i] = intercept + slope_before * (adlike[i] - 0.5) ;
-  } else {
-   conditional_adlike[i] = intercept + slope_after * (adlike[i] - 0.5) ;
-  }
- }
-}
-
-model {
- //set priors
- intercept ~ cauchy(0, 10) ;
- slope_before ~ cauchy(0, 10) ;
- slope_after ~ cauchy(0, 10) ;
- error ~ cauchy(0, 10) ;
- for (i in 1:N) {
-  clinscore[i] ~ normal(conditional_adlike[i], error) ;
- }
-}
-
-generated quantities {
- vector[N] sim_clinscore ;
- vector[N] log_lik ;
- 
- for (i in 1:N) {
-  sim_clinscore[i] = normal_rng(conditional_adlike[i], error) ;
-  log_lik[i] = normal_lpdf(clinscore[i] | conditional_adlike[i], error) ;
- }
-}
-'
+datatable(boston_summary)
 ```
 
 ```{r}
