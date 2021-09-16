@@ -231,10 +231,10 @@ print(p)
 priors <- c(prior(student_t(3,0,2.5), class = "Intercept"))
 
 # Bayesian analysis
-cog_brms <- brm(clinscore ~  1 + adlike + age, 
+cog_brms <- brm(clinscore ~  1 + cs(adlike) + age, 
                 data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = cumulative(),
+                family = acat("probit"),
                 prior = priors)
 
 summary(cog_brms)
