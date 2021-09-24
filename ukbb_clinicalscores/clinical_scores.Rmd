@@ -179,7 +179,7 @@ cog_brms_draws %>%
 ### n correct
 ```{r}
 clinscore = "pairsmatching_n_correct"
-clinscore_name = "Pairs matching, n correct"
+clinscore_name = "Pairs matching\nn correct"
 
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold) %>%
@@ -217,7 +217,8 @@ p <- ggplot(alldata_summary,
                 fill = clinscore)) +
   geom_histogram(stat = "identity",
                  position = position_dodge2()) +
-  labs(x = clinscore) +
+  labs(x = clinscore,
+       fill = clinscore_name) +
   theme(axis.title.x = element_blank(),
         axis.text = element_text(size = 20),
         axis.title = element_text(size = 20))
