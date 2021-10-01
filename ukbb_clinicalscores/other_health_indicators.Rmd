@@ -1000,7 +1000,7 @@ cog_brms_draws %>%
 ## Seen GP for depression
 ```{r}
 clinscore = "seen_gp_depression"
-clinscore_name = "Depression - GP consultation"
+clinscore_name = "Depression - GP consultation (odds ratio)"
 
 alldata <- getdata(clinscore = clinscore,
                    threshold = threshold) %>%
@@ -1078,12 +1078,35 @@ cog_brms %>%
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 ce <- conditional_effects(cog_brms, "adlike")
 
-plot(ce, plot = FALSE)[[1]] +
+# ROPE for odds ratios in logistic regression
+# https://cran.r-project.org/web/packages/bayestestR/vignettes/region_of_practical_equivalence.html
+# or_rope = pi / sqrt(3) * ce$adlike$estimate__[[1]] 
+or_rope = 0.01
+
+plot(ce, plot = FALSE,
+     errorbar_args = list(width = 0))[[1]] +
   labs(y = clinscore_name,
-       x = "AD-like")
+       x = "AD-like") +
+  coord_flip() +
+  scale_x_discrete(limits = c("Positive",
+                              "Negative"),
+                   labels = c("AD-like positive",
+                              "AD-like negative")) +
+  geom_rect(ymin = ce$adlike$estimate__[[1]] - or_rope,
+            ymax = ce$adlike$estimate__[[1]] + or_rope,
+            xmin = 0, xmax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_hline(yintercept = ce$adlike$estimate__[[1]], linetype = "dashed", colour = "blue") +
+  geom_hline(yintercept = ce$adlike$estimate__[[1]] + or_rope, linetype = "dashed", colour = "blue") +
+  geom_hline(yintercept = ce$adlike$estimate__[[1]] - or_rope, linetype = "dashed", colour = "blue") +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 #   scale_fill_discrete(name = clinscore_name,
 #                       labels = seq(0, 3, by = 1)) +
 #   scale_colour_discrete(name = clinscore_name,
@@ -1182,17 +1205,35 @@ summary(cog_brms)
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 ce <- conditional_effects(cog_brms, "adlike")
 
-plot(ce, plot = FALSE)[[1]] +
-  labs(y = clinscore_name,
-       x = "AD-like")
-#   scale_fill_discrete(name = clinscore_name,
-#                       labels = seq(0, 3, by = 1)) +
-#   scale_colour_discrete(name = clinscore_name,
-#                         labels = seq(0, 3, by = 1))
+# ROPE for odds ratios in logistic regression
+# https://cran.r-project.org/web/packages/bayestestR/vignettes/region_of_practical_equivalence.html
+# or_rope = pi / sqrt(3) * ce$adlike$estimate__[[1]] 
+or_rope = 0.01
 
+plot(ce, plot = FALSE,
+     errorbar_args = list(width = 0))[[1]] +
+  labs(y = clinscore_name,
+       x = "AD-like") +
+  coord_flip() +
+  scale_x_discrete(limits = c("Positive",
+                              "Negative"),
+                   labels = c("AD-like positive",
+                              "AD-like negative")) +
+  geom_rect(ymin = ce$adlike$estimate__[[1]] - or_rope,
+            ymax = ce$adlike$estimate__[[1]] + or_rope,
+            xmin = 0, xmax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_hline(yintercept = ce$adlike$estimate__[[1]], linetype = "dashed", colour = "blue") +
+  geom_hline(yintercept = ce$adlike$estimate__[[1]] + or_rope, linetype = "dashed", colour = "blue") +
+  geom_hline(yintercept = ce$adlike$estimate__[[1]] - or_rope, linetype = "dashed", colour = "blue") +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
 ```
 
 ```{r}
@@ -1299,7 +1340,7 @@ priors <- c(prior(cauchy(0, 10), class = "Intercept"),
 cog_brms <- brm(clinscore ~  1 + adlike + age, 
                 data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = cumulative("probit"),
+                family = acat("probit"),
                 prior = priors)
 
 summary(cog_brms)
@@ -1450,12 +1491,39 @@ summary(cog_brms)
 
 ```
 
-```{r}
+```{r, fig.height=2.5, fig.width=6}
 ce <- conditional_effects(cog_brms, "adlike")
 
-plot(ce, plot = FALSE)[[1]] +
+# ROPE for odds ratios in logistic regression
+# https://cran.r-project.org/web/packages/bayestestR/vignettes/region_of_practical_equivalence.html
+# or_rope = pi / sqrt(3) * ce$adlike$estimate__[[1]] 
+or_rope = 0.01
+
+plot(ce, plot = FALSE,
+     errorbar_args = list(width = 0))[[1]] +
   labs(y = clinscore_name,
-       x = "AD-like")
+       x = "AD-like") +
+  coord_flip() +
+  scale_x_discrete(limits = c("Positive",
+                              "Negative"),
+                   labels = c("AD-like positive",
+                              "AD-like negative")) +
+  geom_rect(ymin = ce$adlike$estimate__[[1]] - or_rope,
+            ymax = ce$adlike$estimate__[[1]] + or_rope,
+            xmin = 0, xmax = 3,
+            fill = "cornsilk3") +
+  geom_pointinterval() +
+  geom_hline(yintercept = ce$adlike$estimate__[[1]], linetype = "dashed", colour = "blue") +
+  geom_hline(yintercept = ce$adlike$estimate__[[1]] + or_rope, linetype = "dashed", colour = "blue") +
+  geom_hline(yintercept = ce$adlike$estimate__[[1]] - or_rope, linetype = "dashed", colour = "blue") +
+  labs(x = clinscore_name) +
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 15))
+#   scale_fill_discrete(name = clinscore_name,
+#                       labels = seq(0, 3, by = 1)) +
+#   scale_colour_discrete(name = clinscore_name,
+#                         labels = seq(0, 3, by = 1))
 ```
 
 ```{r}
@@ -1807,7 +1875,7 @@ priors <- c(prior(cauchy(0, 10), class = "Intercept"),
 cog_brms <- brm(clinscore ~  1 + adlike + age, 
                 data = alldata, 
                 iter = 5000, warmup = 1000, chains = 4,
-                family = cumulative("probit"),
+                family = acat("probit"),
                 prior = priors)
 
 summary(cog_brms)
