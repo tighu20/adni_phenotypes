@@ -184,33 +184,88 @@ ukbb.db <- DBI::dbConnect(SQLite(),
                           "../data/ukb40183.db")
 
 ukbb_data <- dbGetQuery(ukbb.db,
-                        sql(paste("SELECT demogs.age, baseline.sex, baseline.eid, clinicaldata.visit",
+                        sql(paste("SELECT DISTINCT demogs.age, baseline.sex, baseline.eid, clinicaldata.visit,",
+                                  "demogs.handedness",
                                   "FROM baseline",
-                                  "JOIN demogs, clinicaldata",
+                                  "LEFT JOIN demogs, clinicaldata",
                                   "ON baseline.eid = demogs.eid",
                                   "AND baseline.eid = clinicaldata.eid",
                                   "AND clinicaldata.eid = demogs.eid",
                                   "AND clinicaldata.visit = demogs.visit",
                                   #"WHERE clinicaldata.visit = '2'",
                                   "WHERE baseline.imaging = 1"))) %>%
-    filter(visit <= 2) %>%
+    filter(visit <= 2)  %>%
     group_by(eid) %>%
     filter(visit == max(visit))
 
-
 ukbb_data_summary <- ukbb_data %>%
+  mutate(group = 2) %>%
+  group_by(group) %>%
   summarise(n = length(eid),
             age = paste(round(mean(age, na.rm = TRUE) / 365.25, digits = 1),
                         paste("(", round(sd(age / 365.25, na.rm = TRUE), digits = 1), ")", sep = "")),
             sex = paste(length(sex[sex=="0"]),
                            length(sex[sex =="1"]),
-                           sep = "/"))
+                           sep = "/"),
+            handedness = paste(length(handedness[handedness == 1]),
+                               length(handedness[handedness == 2]),
+                               length(handedness[handedness == 3]),
+                               sep = "/"),
+            .groups = "keep")
 
 ukbb_data_summary_xtable <- xtable(ukbb_data_summary)
 print(ukbb_data_summary_xtable,
       include.rownames = FALSE)
 
-rm(list = c("ukbb_data",
-            "ukbb_data_summary",
-            "ukbb_data_summary_xtable"))
+DBI::dbDisconnect(ukbb.db)
+
+
+#rm(list = c("ukbb_data",
+#            "ukbb_data_summary",
+#            "ukbb_data_summary_xtable"))
 ```
+
+Now we'll look at the results split into postiive and negative AD score.
+
+```{r}
+ukbb_results <- read.table("../results/latest_output_ukb_50.csv",
+                           sep = ",",
+                           header = TRUE)
+
+positive_list <- ukbb_results[ukbb_results$mean >= 0.5, "ukb_id"]
+
+# convert names using bridge
+bridge <- read.table("../data/bridge_46620_20904_20200122.csv",
+                     sep = ",",
+                     header = TRUE)
+bridge_list <- bridge$eid46620
+names(bridge_list) <- bridge$eid20904
+rm("bridge")
+
+positive_list_conv <- sapply(positive_list,
+                             function(x) bridge_list[[as.character(x)]])
+rm("bridge_list")
+
+ukbb_data_summary <- ukbb_data %>%
+  group_by(eid) %>%
+  mutate(ad_score = if(eid %in% positive_list_conv) {TRUE} else {FALSE}) %>%
+  group_by(ad_score) %>%
+  summarise(n = length(eid),
+            age = paste(round(mean(age, na.rm = TRUE) / 365.25, digits = 1),
+                        paste("(", round(sd(age / 365.25, na.rm = TRUE), digits = 1), ")", sep = "")),
+            sex = paste(length(sex[sex=="0"]),
+                           length(sex[sex =="1"]),
+                           sep = "/"),
+            handedness = paste(length(handedness[handedness == 1]),
+                               length(handedness[handedness == 2]),
+                               length(handedness[handedness == 3]),
+                               sep = "/"),
+            .groups = "keep")
+
+ukbb_data_summary_xtable <- xtable(ukbb_data_summary)
+print(ukbb_data_summary_xtable,
+      include.rownames = FALSE)
+
+```
+
+
