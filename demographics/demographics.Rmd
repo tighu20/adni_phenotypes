@@ -183,6 +183,22 @@ UK biobank demographics
 ukbb.db <- DBI::dbConnect(SQLite(),
                           "../data/ukb40183.db")
 
+handedness_ukbb_data <- dbGetQuery(ukbb.db,
+                        sql(paste("SELECT DISTINCT baseline.eid,",
+                                  "demogs.handedness",
+                                  "FROM baseline",
+                                  "LEFT JOIN demogs",
+                                  "ON baseline.eid = demogs.eid"))) %>%
+                                  #"WHERE clinicaldata.visit = '2'",
+    filter(handedness != "") %>%
+    group_by(eid) %>%
+    summarise(len = n()) %>%
+    group_by(len) %>%
+    summarise(length = n()) 
+
+```
+
+```{r}
 ukbb_data <- dbGetQuery(ukbb.db,
                         sql(paste("SELECT DISTINCT demogs.age, baseline.sex, baseline.eid, clinicaldata.visit,",
                                   "demogs.handedness",
@@ -246,19 +262,29 @@ positive_list_conv <- sapply(positive_list,
                              function(x) bridge_list[[as.character(x)]])
 rm("bridge_list")
 
+#ukbb_data_summary <- ukbb_data %>%
+#  
+## n of positives
+#n_pos_ukbb <- nrow(ukbb_data_summary[ukbb_data_summary$ad_score == TRUE,])
+
+## n of negatives
+#n_neg_ukbb <- nrow(ukbb_data_summary[ukbb_data_summary$ad_score == FALSE,])
+
+
+
 ukbb_data_summary <- ukbb_data %>%
   group_by(eid) %>%
   mutate(ad_score = if(eid %in% positive_list_conv) {TRUE} else {FALSE}) %>%
   group_by(ad_score) %>%
   summarise(n = length(eid),
             age = paste(round(mean(age, na.rm = TRUE) / 365.25, digits = 1),
-                        paste("(", round(sd(age / 365.25, na.rm = TRUE), digits = 1), ")", sep = "")),
-            sex = paste(length(sex[sex=="0"]),
-                           length(sex[sex =="1"]),
-                           sep = "/"),
-            handedness = paste(length(handedness[handedness == 1]),
-                               length(handedness[handedness == 2]),
-                               length(handedness[handedness == 3]),
+                        paste("(", round(sd(age, na.rm = TRUE) / 365.25, digits = 1), ")", sep = "")),
+            sex = paste(round((length(sex[sex=="0"]) / length(eid)) * 100, digits = 2),
+                        round((length(sex[sex =="1"]) / length(eid)) * 100, digits = 2),
+                        sep = "/"),
+            handedness = paste(round((length(handedness[handedness == 1]) / length(eid)) * 100, digits = 2),
+                               round((length(handedness[handedness == 2]) / length(eid)) * 100, digits = 2),
+                               round((length(handedness[handedness == 3]) / length(eid)) * 100, digits = 2),
                                sep = "/"),
             .groups = "keep")
 
