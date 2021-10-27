@@ -183,6 +183,7 @@ UK biobank demographics
 ukbb.db <- DBI::dbConnect(SQLite(),
                           "../data/ukb40183.db")
 
+# get handedness data separately
 handedness_ukbb_data <- dbGetQuery(ukbb.db,
                         sql(paste("SELECT DISTINCT baseline.eid,",
                                   "demogs.handedness",
@@ -190,18 +191,18 @@ handedness_ukbb_data <- dbGetQuery(ukbb.db,
                                   "LEFT JOIN demogs",
                                   "ON baseline.eid = demogs.eid"))) %>%
                                   #"WHERE clinicaldata.visit = '2'",
-    filter(handedness != "") %>%
-    group_by(eid) %>%
-    summarise(len = n()) %>%
-    group_by(len) %>%
-    summarise(length = n()) 
+  filter(handedness != "") %>%
+  group_by(eid) %>%
+  summarise(hand = max(handedness),
+            .groups = "keep")
+  
 
 ```
 
 ```{r}
 ukbb_data <- dbGetQuery(ukbb.db,
-                        sql(paste("SELECT DISTINCT demogs.age, baseline.sex, baseline.eid, clinicaldata.visit,",
-                                  "demogs.handedness",
+                        sql(paste("SELECT DISTINCT demogs.age, baseline.sex, baseline.eid, clinicaldata.visit",
+                                  #"demogs.handedness",
                                   "FROM baseline",
                                   "LEFT JOIN demogs, clinicaldata",
                                   "ON baseline.eid = demogs.eid",
@@ -214,6 +215,11 @@ ukbb_data <- dbGetQuery(ukbb.db,
     group_by(eid) %>%
     filter(visit == max(visit))
 
+# add handedness data
+ukbb_data <- left_join(ukbb_data,
+                       handedness_ukbb_data) 
+
+# sumarise the data
 ukbb_data_summary <- ukbb_data %>%
   mutate(group = 2) %>%
   group_by(group) %>%
@@ -223,9 +229,9 @@ ukbb_data_summary <- ukbb_data %>%
             sex = paste(length(sex[sex=="0"]),
                            length(sex[sex =="1"]),
                            sep = "/"),
-            handedness = paste(length(handedness[handedness == 1]),
-                               length(handedness[handedness == 2]),
-                               length(handedness[handedness == 3]),
+            hand = paste(length(hand[hand == 1]),
+                               length(hand[hand == 2]),
+                               length(hand[hand == 3]),
                                sep = "/"),
             .groups = "keep")
 
@@ -279,12 +285,12 @@ ukbb_data_summary <- ukbb_data %>%
   summarise(n = length(eid),
             age = paste(round(mean(age, na.rm = TRUE) / 365.25, digits = 1),
                         paste("(", round(sd(age, na.rm = TRUE) / 365.25, digits = 1), ")", sep = "")),
-            sex = paste(round((length(sex[sex=="0"]) / length(eid)) * 100, digits = 2),
-                        round((length(sex[sex =="1"]) / length(eid)) * 100, digits = 2),
+            sex = paste(round((length(sex[sex=="0"]) / n()) * 100, digits = 2),
+                        round((length(sex[sex =="1"]) / n()) * 100, digits = 2),
                         sep = "/"),
-            handedness = paste(round((length(handedness[handedness == 1]) / length(eid)) * 100, digits = 2),
-                               round((length(handedness[handedness == 2]) / length(eid)) * 100, digits = 2),
-                               round((length(handedness[handedness == 3]) / length(eid)) * 100, digits = 2),
+            hand = paste(round((length(hand[hand == 1]) / n()) * 100, digits = 2),
+                               round((length(hand[hand == 2]) / n()) * 100, digits = 2),
+                               round((length(hand[hand == 3]) / n()) * 100, digits = 2),
                                sep = "/"),
             .groups = "keep")
 
