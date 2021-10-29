@@ -239,7 +239,6 @@ ukbb_data_summary_xtable <- xtable(ukbb_data_summary)
 print(ukbb_data_summary_xtable,
       include.rownames = FALSE)
 
-DBI::dbDisconnect(ukbb.db)
 
 
 #rm(list = c("ukbb_data",
@@ -285,12 +284,12 @@ ukbb_data_summary <- ukbb_data %>%
   summarise(n = length(eid),
             age = paste(round(mean(age, na.rm = TRUE) / 365.25, digits = 1),
                         paste("(", round(sd(age, na.rm = TRUE) / 365.25, digits = 1), ")", sep = "")),
-            sex = paste(round((length(sex[sex=="0"]) / n()) * 100, digits = 2),
-                        round((length(sex[sex =="1"]) / n()) * 100, digits = 2),
+            sex = paste(round((length(sex[sex=="0"]) / n()) * 100, digits = 1),
+                        round((length(sex[sex =="1"]) / n()) * 100, digits = 1),
                         sep = "/"),
-            hand = paste(round((length(hand[hand == 1]) / n()) * 100, digits = 2),
-                               round((length(hand[hand == 2]) / n()) * 100, digits = 2),
-                               round((length(hand[hand == 3]) / n()) * 100, digits = 2),
+            hand = paste(round((length(hand[hand == 1]) / n()) * 100, digits = 1),
+                               round((length(hand[hand == 2]) / n()) * 100, digits = 1),
+                               round((length(hand[hand == 3]) / n()) * 100, digits = 1),
                                sep = "/"),
             .groups = "keep")
 
@@ -298,6 +297,39 @@ ukbb_data_summary_xtable <- xtable(ukbb_data_summary)
 print(ukbb_data_summary_xtable,
       include.rownames = FALSE)
 
+rm("ukbb_data",
+   "handedness_ukbb_data")
+```
+
+
+```{r}
+# rate of smoking in the UK biobank
+clinscore = "ever_smoked"
+smoking_data <- dbGetQuery(ukbb.db,
+                           sql(paste("SELECT DISTINCT demogs.eid,",
+                                     "demogs.ever_smoked",
+                                     "FROM demogs",
+                                     "WHERE NOT demogs.ever_smoked =''"))) %>%
+  group_by(eid) %>%
+  summarise(ever_smoked = max(ever_smoked),
+                              .groups = "keep") %>%
+  ungroup() %>%
+  summarise("Non-smoker" = paste("Never smoked" = length(ever_smoked[ever_smoked == 0]),
+                                 "(", round(length(ever_smoked[ever_smoked == 0]) / n(), digits = 1),
+                                 ")", sep = ""),
+            "Smoker" = paste("Ever smoked" = length(ever_smoked[ever_smoked == 1]),
+                             "(", round(length(ever_smoked[ever_smoked == 1]) / n(), digits = 1),
+                             ")", sep = ""),
+            .groups = "drop")
+            
+
+  
+```
+
+
+```{r}
+# Disconnect database
+DBI::dbDisconnect(ukbb.db)
 ```
 
 
