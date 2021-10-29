@@ -285,12 +285,12 @@ ukbb_data_summary <- ukbb_data %>%
   summarise(n = length(eid),
             age = paste(round(mean(age, na.rm = TRUE) / 365.25, digits = 1),
                         paste("(", round(sd(age, na.rm = TRUE) / 365.25, digits = 1), ")", sep = "")),
-            sex = paste(round((length(sex[sex=="0"]) / n()) * 100, digits = 2),
-                        round((length(sex[sex =="1"]) / n()) * 100, digits = 2),
+            sex = paste(round((length(sex[sex=="0"]) / n()) * 100, digits = 1),
+                        round((length(sex[sex =="1"]) / n()) * 100, digits = 1),
                         sep = "/"),
-            hand = paste(round((length(hand[hand == 1]) / n()) * 100, digits = 2),
-                               round((length(hand[hand == 2]) / n()) * 100, digits = 2),
-                               round((length(hand[hand == 3]) / n()) * 100, digits = 2),
+            hand = paste(round((length(hand[hand == 1]) / n()) * 100, digits = 1),
+                               round((length(hand[hand == 2]) / n()) * 100, digits = 1),
+                               round((length(hand[hand == 3]) / n()) * 100, digits = 1),
                                sep = "/"),
             .groups = "keep")
 
