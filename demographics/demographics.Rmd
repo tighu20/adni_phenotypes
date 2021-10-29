@@ -239,7 +239,6 @@ ukbb_data_summary_xtable <- xtable(ukbb_data_summary)
 print(ukbb_data_summary_xtable,
       include.rownames = FALSE)
 
-DBI::dbDisconnect(ukbb.db)
 
 
 #rm(list = c("ukbb_data",
@@ -298,6 +297,39 @@ ukbb_data_summary_xtable <- xtable(ukbb_data_summary)
 print(ukbb_data_summary_xtable,
       include.rownames = FALSE)
 
+rm("ukbb_data",
+   "handedness_ukbb_data")
+```
+
+
+```{r}
+# rate of smoking in the UK biobank
+clinscore = "ever_smoked"
+smoking_data <- dbGetQuery(ukbb.db,
+                           sql(paste("SELECT DISTINCT demogs.eid,",
+                                     "demogs.ever_smoked",
+                                     "FROM demogs",
+                                     "WHERE NOT demogs.ever_smoked =''"))) %>%
+  group_by(eid) %>%
+  summarise(ever_smoked = max(ever_smoked),
+                              .groups = "keep") %>%
+  ungroup() %>%
+  summarise("Non-smoker" = paste("Never smoked" = length(ever_smoked[ever_smoked == 0]),
+                                 "(", round(length(ever_smoked[ever_smoked == 0]) / n(), digits = 1),
+                                 ")", sep = ""),
+            "Smoker" = paste("Ever smoked" = length(ever_smoked[ever_smoked == 1]),
+                             "(", round(length(ever_smoked[ever_smoked == 1]) / n(), digits = 1),
+                             ")", sep = ""),
+            .groups = "drop")
+            
+
+  
+```
+
+
+```{r}
+# Disconnect database
+DBI::dbDisconnect(ukbb.db)
 ```
 
 
