@@ -193,7 +193,7 @@ handedness_ukbb_data <- dbGetQuery(ukbb.db,
                                   #"WHERE clinicaldata.visit = '2'",
   filter(handedness != "") %>%
   group_by(eid) %>%
-  summarise(hand = max(handedness),
+  summarise(hand = max(hand),
             .groups = "keep")
   
 
