@@ -778,6 +778,39 @@ print(p)
 ```
 
 ```{r}
+# change to proportions
+total_pos = length(alldata[alldata$adlike == "Positive", "eid"][["eid"]])
+total_neg = length(alldata[alldata$adlike == "Negative", "eid"][["eid"]])
+
+alldata_summary <- alldata %>%
+  group_by(adlike, clinscore) %>%
+  summarise(n = length(eid))
+alldata_summary$totals <- sapply(alldata_summary$adlike,
+                                 function(x, total_pos, total_neg) if (x == "Positive") {return(total_pos)} else {return(total_neg)},
+                                 total_pos = total_pos,
+                                 total_neg = total_neg)
+alldata_summary <- alldata_summary %>%
+  group_by(adlike, clinscore) %>%
+  mutate(proportion = n / totals)
+
+alldata_summary$clinscore <- as.integer(alldata_summary$clinscore)
+
+p <- ggplot(alldata_summary,
+            aes(y = proportion,
+                x = adlike,
+                fill = clinscore)) +
+  geom_histogram(stat = "identity",
+                 position = position_dodge2()) +
+  labs(x = clinscore,
+       fill = clinscore_name) +
+  theme(axis.title.x = element_blank(),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20))
+
+print(p)
+```
+
+```{r}
 # Bayesian analysis
 cog_brms <- brm(clinscore ~ adlike + age, 
                 data = alldata, 
