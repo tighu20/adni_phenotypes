@@ -5,6 +5,8 @@
 
 *Tiago Azevedo, Richard A.I. Bethlehem, David J. Whiteside, Nol Swaddiwudhipong, James B. Rowe, Pietro Lió, Timothy Rittman*
 
+![Model architecture](data/adni_arch.png)
+
 
 This repository contains all the code necessary to run and further extend the experiments presented in the following preprint: XXXX
 
